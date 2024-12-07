@@ -99,11 +99,4 @@ main = do
   }
 
   runBrige bridgeConfig
-
-
-  endless_echo id
-  where
-    endless_echo f = do
-      ln <- getLine
-      endless_echo f
   
