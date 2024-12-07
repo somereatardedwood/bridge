@@ -1,0 +1,42 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.35.2.
+--
+-- see: https://github.com/sol/hpack
+
+name:           tg-simplex-bridge
+version:        0.1.0
+build-type:     Simple
+
+executable bridge
+  main-is: Main.hs
+  other-modules:
+      Bridge
+      Puppet
+      Shared
+      SimplexBot
+      TelegramBot
+      Paths_tg_simplex_bridge
+  hs-source-dirs:
+      apps/bridge
+      src
+  build-depends:
+      async ==2.2.*
+    , base
+    , bytestring
+    , containers
+    , directory ==1.3.*
+    , filepath
+    , mtl
+    , simple-logger ==0.1.*
+    , simplex-chat
+    , simplexmq >=5.0
+    , sqlite-simple
+    , stm
+    , telegram-bot-api
+    , telegram-bot-simple
+    , text
+    , time ==1.12.*
+    , unliftio ==0.2.*
+    , unliftio-core ==0.2.*
+  default-language: Haskell2010
