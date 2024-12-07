@@ -48,6 +48,7 @@ import qualified Database.SQLite.Simple as DB( FromRow(..), NamedParam(..), Conn
 import System.Directory (getAppUserDataDirectory, createDirectoryIfMissing, getHomeDirectory)
 import System.FilePath ((</>))
 import Telegram.Bot.API.Types.Common(ChatId(..))
+import qualified Telegram.Bot.API.Types.User as TgUser
 import Data.ByteString
 
 newtype StringRow = StringRow {getString :: String}
@@ -55,16 +56,17 @@ newtype StringRow = StringRow {getString :: String}
 instance DB.FromRow StringRow where
   fromRow = StringRow <$> DB.field
 
-getOrCreatePuppetByTgUser :: DB.Connection -> ChatController -> TelegramAPI.UserId -> Telegram.Bot.API.Types.Common.ChatId -> SMP.AConnectionRequestUri -> IO Puppet
-getOrCreatePuppetByTgUser conn cc tgUser tgChat invatationLink = do
-  puppet' <- getPuppetByTgId conn tgUser
+getOrCreatePuppetByTgUser :: DB.Connection -> ChatController -> TgUser.User -> Telegram.Bot.API.Types.Common.ChatId -> SMP.AConnectionRequestUri -> IO Puppet
+getOrCreatePuppetByTgUser conn cc tguser tgChat invatationLink = do
+  let tgUserId' = TgUser.userId tguser
+  puppet' <- getPuppetByTgId conn tgUserId'
   case puppet' of
     Just p -> do
       return p
     Nothing -> do
-      let displayName = Text.pack $ show tgUser
+      let displayName = (TgUser.userFirstName tguser) <> (maybe (Text.pack "") id (TgUser.userLastName tguser))
       correspondingSimplexUser@Simplex.Chat.Types.User{userId = simplexUserId'} <- SimplexChatBot.createActiveUser cc (Profile {displayName, fullName = "", image = Nothing, contactLink = Nothing, preferences = Nothing}) 
-      let puppet = Puppet {tgUserId = tgUser, simplexUserId = simplexUserId', tgChatId = tgChat}
+      let puppet = Puppet {tgUserId = tgUserId', simplexUserId = simplexUserId', tgChatId = tgChat}
       insertPuppet conn False puppet
       SimplexChatBot.sendContactInvatation cc invatationLink
       return puppet

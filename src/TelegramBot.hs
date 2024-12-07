@@ -18,11 +18,12 @@ import Control.Monad.Reader
 import Control.Concurrent.STM
 import Simplex.Chat.Controller(ChatResponse)
 import Telegram.Bot.API.Types.Common(ChatId(..), SomeChatId(..))
+import Telegram.Bot.API.Types.User
 
 type Model = ()
 
 data TelegramAction =
-        MsgFromUser UserId ChatId Text.Text
+        MsgFromUser User ChatId Text.Text
     |   MsgToChat ChatId Text.Text
 
 updateToAction :: Update -> Model -> Maybe TelegramAction
@@ -31,7 +32,7 @@ updateToAction update _ = do
     usr <- messageFrom msg
     text <- messageText msg
     let chat = messageChat msg
-    return $ MsgFromUser (Telegram.Bot.API.userId usr) (chatId chat) text
+    return $ MsgFromUser usr (chatId chat) text
 
 handleTgAction :: TBQueue (Either ChatResponse TelegramAction) -> TelegramAction -> Model -> Eff TelegramAction Model
 handleTgAction eventQueue action model = case action of
