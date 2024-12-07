@@ -6,10 +6,14 @@
 
 module Shared
 (
+    initTelegramTokenDB,
+    saveTelegramToken,
+    getTelegramToken,
     getOrCreatePuppetByTgUser,
     getPuppetOwnerContact,
     initOwnerLinkDB,
     saveOwnerInvatationLink,
+    getOwnerInvatationLink,
     getPuppetBySimplexUser
 ) 
 where
@@ -44,21 +48,24 @@ import qualified Database.SQLite.Simple as DB( FromRow(..), NamedParam(..), Conn
 import System.Directory (getAppUserDataDirectory, createDirectoryIfMissing, getHomeDirectory)
 import System.FilePath ((</>))
 import Telegram.Bot.API.Types.Common(ChatId(..))
+import Data.ByteString
 
+newtype StringRow = StringRow {getString :: String}
+
+instance DB.FromRow StringRow where
+  fromRow = StringRow <$> DB.field
 
 getOrCreatePuppetByTgUser :: DB.Connection -> ChatController -> TelegramAPI.UserId -> Telegram.Bot.API.Types.Common.ChatId -> SMP.AConnectionRequestUri -> IO Puppet
 getOrCreatePuppetByTgUser conn cc tgUser tgChat invatationLink = do
   puppet' <- getPuppetByTgId conn tgUser
   case puppet' of
-    Just p -> do 
-      putStrLn $ "Found puppet for tgid " ++ show tgUser ++ " with simplex id " ++ show (simplexUserId p)
+    Just p -> do
       return p
     Nothing -> do
       let displayName = Text.pack $ show tgUser
       correspondingSimplexUser@Simplex.Chat.Types.User{userId = simplexUserId'} <- SimplexChatBot.createActiveUser cc (Profile {displayName, fullName = "", image = Nothing, contactLink = Nothing, preferences = Nothing}) 
       let puppet = Puppet {tgUserId = tgUser, simplexUserId = simplexUserId', tgChatId = tgChat}
       insertPuppet conn False puppet
-      putStrLn $ "Created puppet for tgid " ++ show tgUser ++ " with simplex id " ++ show (simplexUserId puppet)
       SimplexChatBot.sendContactInvatation cc invatationLink
       return puppet
 
@@ -94,3 +101,30 @@ saveOwnerInvatationLink conn link = do
     let linkStr = strEncode link
     -- TODO: don't insert duplicates
     DB.execute conn "INSERT INTO ownerInvatationLink (link) VALUES (?)" (DB.Only $ Text.unpack $ Text.decodeUtf8 linkStr)
+
+getOwnerInvatationLink :: DB.Connection -> IO (Maybe SMP.AConnectionRequestUri)
+getOwnerInvatationLink conn = do
+  links <- DB.query_ conn "SELECT * from ownerInvatationLink":: IO [StringRow]
+  case links of
+    link':_ -> case strDecode  $ Text.encodeUtf8 $ Text.pack (getString link') of
+      Left error -> return Nothing
+      Right link -> return $ Just link
+    _ -> return Nothing
+
+initTelegramTokenDB :: DB.Connection -> IO ()
+initTelegramTokenDB conn = do
+    DB.execute_ conn "CREATE TABLE IF NOT EXISTS telegramToken (token TEXT)"
+    return ()
+
+saveTelegramToken :: DB.Connection -> String -> IO()
+saveTelegramToken conn link = do
+    let linkStr = strEncode link
+    -- TODO: don't insert duplicates
+    DB.execute conn "INSERT INTO telegramToken (token) VALUES (?)" (DB.Only link)
+
+getTelegramToken :: DB.Connection -> IO (Maybe String)
+getTelegramToken conn = do
+  tokens <- DB.query_ conn "SELECT * from telegramToken":: IO [StringRow]
+  case tokens of
+    token:_ -> return $ Just (getString token)
+    _ -> return Nothing

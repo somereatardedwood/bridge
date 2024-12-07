@@ -17,7 +17,7 @@ import TelegramBot
 import Simplex.Chat.Options
 import System.Directory (getAppUserDataDirectory, createDirectoryIfMissing, getHomeDirectory)
 import System.FilePath ((</>))
-import Database.SQLite.Simple(open)
+import qualified Database.SQLite.Simple as DB(open, Connection)
 import Simplex.Chat.Controller ( versionNumber )
 import Control.Concurrent.MVar
 import Simplex.Chat.Terminal (terminalChatConfig)
@@ -41,11 +41,16 @@ welcomeGetOpts = do
   putStrLn $ "db: " <> dbFilePrefix <> "_chat.db, " <> dbFilePrefix <> "_agent.db"
   pure opts
 
-getTelegramToken :: IO (Token)
-getTelegramToken = do
-  putStrLn "Enter telegram bot token"
-  Token . Text.pack <$> getLine
-  --return "XXXX"
+askTelegramToken :: DB.Connection -> IO (Token)
+askTelegramToken db = do
+  mToken <- getTelegramToken db
+  case mToken of
+    Just t -> return $ Token $ Text.pack t
+    Nothing -> do
+      putStrLn "Enter telegram bot token"
+      token <- getLine
+      saveTelegramToken db token
+      return $ Token $ Text.pack token
 
 main :: IO ()
 main = do
@@ -54,20 +59,23 @@ main = do
   let appDir = fmap (flip (</>) "bridgeData") $ getAppUserDataDirectory "simplex"
   appDir >>= createDirectoryIfMissing False
   let botDbFile = fmap (flip (</>) "botDB.db") appDir
-  botDB <- botDbFile >>= open
+  botDB <- botDbFile >>= DB.open
   initPuppetDB botDB
   initOwnerLinkDB botDB
+  initTelegramTokenDB botDB
 
   opts <- welcomeGetOpts
-  token <- getTelegramToken
+  token <- askTelegramToken botDB
   botIdMVar <- newEmptyMVar
   ownerLinkMVar <- newEmptyMVar
   eventQueue <- atomically $ newTBQueue queueSize
 
+  link <- getOwnerInvatationLink botDB
+
+  maybe (return ()) (putMVar ownerLinkMVar) link
+
   cc <- initializeSimplexChatCore terminalChatConfig opts botDB (mySimplexBot botIdMVar botDB eventQueue)
   putStrLn "Contact to bot to become owner\nThe first person to join the bot will be considered its owner"
-  --ownerIdLink <- readMVar ownerIdLinkMVar
-  --saveOwnerInvatationLink botDB (fst ownerIdLink)
 
 
   let tgBot = BotApp{

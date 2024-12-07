@@ -44,12 +44,7 @@ runBrige bridgeConfig@BridgeConfig{chatController = cc, telegramActionHandler = 
     where 
         processSimplexAction action _userId = case action of
             CRContactConnected botacc@SimplexTypes.User{SimplexTypes.userId = _userId'} contact _ ->
-                when (_userId' == _userId) 
-                (
-                    do
-                        contactConnected contact
-                        SimplexChatBotApi.sendMessage cc contact welcomeMessage
-                )
+                when (_userId' == _userId) $ SimplexChatBotApi.sendMessage cc contact welcomeMessage
             CRNewChatItems {user = _user'@SimplexTypes.User{SimplexTypes.userId = _userId'}, chatItems = (AChatItem _ SMDRcv (DirectChat contact@SimplexTypes.Contact{contactId = cid}) ChatItem {content = mc@CIRcvMsgContent {}}) : _}
                 | _userId' == _userId -> do
                     case strDecode (Text.encodeUtf8 $ ciContentToText mc) of
@@ -59,7 +54,7 @@ runBrige bridgeConfig@BridgeConfig{chatController = cc, telegramActionHandler = 
                                 do
                                     isFirstUser <- tryPutMVar invatationLinkMVar uri --TODO: it's not certain that if MVar is empty, tryPutMVar returns True
                                     if isFirstUser
-                                        then SimplexChatBotApi.sendMessage cc contact "You are the owner now"
+                                        then saveOwnerInvatationLink bridgedb uri >> SimplexChatBotApi.sendMessage cc contact "You are the owner now"
                                         else SimplexChatBotApi.sendMessage cc contact "Someone overtook you or you are already the owner" 
                             )
                 | otherwise ->
@@ -71,16 +66,19 @@ runBrige bridgeConfig@BridgeConfig{chatController = cc, telegramActionHandler = 
             _ -> pure ()
         processTelegramAction action = case action of 
             MsgFromUser usr chat msg -> do
-                invatationLink <- readMVar invatationLinkMVar --TODO tryReadMvar
-                puppet <- getOrCreatePuppetByTgUser bridgedb cc usr chat invatationLink
-                SimplexChatBotApi.setCCActiveUser cc (simplexUserId puppet)
-                contact' <- getPuppetOwnerContact puppet cc
-                case contact' of 
-                    Just contact -> SimplexChatBotApi.sendMessage cc contact (Text.unpack msg)
-                    Nothing -> putStrLn "Cant find interlocutor's contact" --return () -- Error. Cant find interlocutor's contact
+                invatationLink' <- tryReadMVar invatationLinkMVar
+                case invatationLink' of
+                    Just invatationLink -> do
+                        puppet <- getOrCreatePuppetByTgUser bridgedb cc usr chat invatationLink
+                        SimplexChatBotApi.setCCActiveUser cc (simplexUserId puppet)
+                        contact' <- getPuppetOwnerContact puppet cc
+                        case contact' of 
+                            Just contact -> SimplexChatBotApi.sendMessage cc contact (Text.unpack msg)
+                            Nothing -> putStrLn "Cant find interlocutor's contact"
+                    Nothing -> putStrLn "Missed invatation link. Cant process process telegram action" 
+                
             MsgToChat chat txt -> do
                 putStr "Wrong type of event"
-        contactConnected SimplexTypes.Contact {localDisplayName} = putStrLn $ Text.unpack localDisplayName <> " connected"
 
 welcomeMessage :: String
 welcomeMessage = "Send me your invatiation link. Puppets will use it to connect to you"

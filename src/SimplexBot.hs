@@ -127,8 +127,6 @@ mySimplexBot puppeterIdMVar conn eventQueue _user@User{userId = _userId} cc = do
   race_ (forever $ void getLine) . forever $ do
     (_, _, resp) <- atomically . readTBQueue $ outputQ cc
     atomically $ writeTBQueue eventQueue (Left resp)
-  where
-    contactConnected Contact {localDisplayName} = putStrLn $ Text.unpack localDisplayName <> " connected"
 
 welcomeMessage :: String
 welcomeMessage = "Send me your invatiation link. Puppets will use it to connect to you"
