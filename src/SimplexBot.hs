@@ -43,7 +43,7 @@ import Simplex.Chat.Messages
 import UnliftIO.Async
 import Control.Concurrent.STM
 import Simplex.Messaging.Encoding.String (StrEncoding(strDecode))
-import TelegramBot (TelegramAction)
+import TelegramBot (TelegramEvent(..))
 import Telegram.Bot.API.Types.Common(ChatId(..))
 import Puppet
 
@@ -120,7 +120,7 @@ userStr User {localDisplayName, profile = LocalProfile {fullName}} =
 
 
 
-mySimplexBot :: MVar UserId -> DB.Connection -> TBQueue (Either ChatResponse TelegramAction) -> User -> ChatController -> IO ()
+mySimplexBot :: MVar UserId -> DB.Connection -> TBQueue (Either ChatResponse TelegramEvent) -> User -> ChatController -> IO ()
 mySimplexBot puppeterIdMVar conn eventQueue _user@User{userId = _userId} cc = do
   putMVar puppeterIdMVar _userId
   SimplexChatBotApi.initializeBotAddress cc

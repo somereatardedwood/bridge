@@ -1,7 +1,11 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module TelegramBot
 (
     Model(..),
-    TelegramAction(..),
+    TelegramEvent(..),
+    TelegramCommand(..),
+    TelegramAction,
     updateToAction, 
     handleTgAction
 )
@@ -22,9 +26,13 @@ import Telegram.Bot.API.Types.User
 
 type Model = ()
 
-data TelegramAction =
-        MsgFromUser User ChatId Text.Text
-    |   MsgToChat ChatId Text.Text
+data TelegramEvent =
+    MsgFromUser User ChatId Text.Text
+
+data TelegramCommand =
+    MsgToChat ChatId Text.Text
+
+type TelegramAction = Either TelegramEvent TelegramCommand
 
 updateToAction :: Update -> Model -> Maybe TelegramAction
 updateToAction update _ = do 
@@ -32,13 +40,20 @@ updateToAction update _ = do
     usr <- messageFrom msg
     text <- messageText msg
     let chat = messageChat msg
-    return $ MsgFromUser usr (chatId chat) text
+    return $ Left $ MsgFromUser usr (chatId chat) text
 
-handleTgAction :: TBQueue (Either ChatResponse TelegramAction) -> TelegramAction -> Model -> Eff TelegramAction Model
+handleTgAction :: TBQueue (Either ChatResponse TelegramEvent) -> TelegramAction -> Model -> Eff TelegramAction Model
 handleTgAction eventQueue action model = case action of
-    MsgFromUser _ _ _ -> model <# do (putAction action)
-    MsgToChat c t -> model <# do
-        let sendMsgReq = SendMessageRequest{
+    Left e -> processTelegramEvent e
+    Right c -> processTelegramCommand c
+    where
+        putEvent a = liftIO $ atomically $ writeTBQueue eventQueue (Right a)
+
+        processTelegramEvent e = model <# do (putEvent e)
+
+        processTelegramCommand command = case command of
+            MsgToChat c t -> model <# do
+                let sendMsgReq = SendMessageRequest{
                     sendMessageBusinessConnectionId = Nothing,
                     sendMessageChatId = SomeChatId c,
                     sendMessageMessageThreadId = Nothing,
@@ -53,8 +68,5 @@ handleTgAction eventQueue action model = case action of
                     sendMessageReplyParameters = Nothing,
                     sendMessageReplyMarkup = Nothing
                 }
-        _ <- runTG $ sendMessage sendMsgReq
-        return ()
-    where
-        putAction a = liftIO $ atomically $ writeTBQueue eventQueue (Right a)
-
+                _ <- runTG $ sendMessage sendMsgReq
+                return ()
