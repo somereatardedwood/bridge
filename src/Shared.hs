@@ -64,7 +64,7 @@ getOrCreatePuppetByTgUser conn cc tguser tgChat invatationLink = do
     Just p -> do
       return p
     Nothing -> do
-      let displayName = (TgUser.userFirstName tguser) <> (maybe (Text.pack "") id (TgUser.userLastName tguser))
+      let displayName = (TgUser.userFirstName tguser) <> (fromMaybe (Text.pack "") (TgUser.userLastName tguser))
       correspondingSimplexUser@Simplex.Chat.Types.User{userId = simplexUserId'} <- SimplexChatBot.createActiveUser cc (Profile {displayName, fullName = "", image = Nothing, contactLink = Nothing, preferences = Nothing}) 
       let puppet = Puppet {tgUserId = tgUserId', simplexUserId = simplexUserId', tgChatId = tgChat}
       insertPuppet conn False puppet
