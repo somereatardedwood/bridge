@@ -45,7 +45,7 @@ initPuppetDB :: Connection -> IO ()
 initPuppetDB conn = do
     -- TODO: better table structure
     -- maybe its possible to assume that puppeter always has id=1, but i dont shure how sqlite works
-    execute_ conn "CREATE TABLE IF NOT EXISTS botPuppets (id INTEGER PRIMARY KEY, isPuppeteer BOOLEAN, simplexUserID BIGINT, telegramUserID BIGINT, telegramChatID BIGINT)"
+    execute_ conn "CREATE TABLE IF NOT EXISTS botPuppets (id INTEGER PRIMARY KEY, isPuppeteer BOOLEAN, simplexUserID INTEGER, telegramUserID INTEGER, telegramChatID INTEGER)"
     return ()
 
 selectPuppeteerUserId :: Connection -> IO (Maybe SMP.UserId)
