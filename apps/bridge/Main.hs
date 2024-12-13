@@ -63,6 +63,7 @@ main = do
   initPuppetDB botDB
   initOwnerLinkDB botDB
   initTelegramTokenDB botDB
+  initOwnerChatIdDB botDB
 
   opts <- welcomeGetOpts
   token <- askTelegramToken botDB

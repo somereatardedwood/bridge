@@ -3,6 +3,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE InstanceSigs #-}
 
 module Shared
 (
@@ -10,11 +11,13 @@ module Shared
     saveTelegramToken,
     getTelegramToken,
     getOrCreatePuppetByTgUser,
-    getPuppetOwnerContact,
+    getOwnerChatId,
     initOwnerLinkDB,
     saveOwnerInvatationLink,
     getOwnerInvatationLink,
-    getPuppetBySimplexUser
+    getPuppetBySimplexUser,
+    initOwnerChatIdDB,
+    saveOwnerChatId
 ) 
 where
 
@@ -44,17 +47,25 @@ import Simplex.Chat.Terminal (terminalChatConfig)
 import qualified Simplex.Chat.Bot as SimplexChatBot
 import Simplex.Messaging.Encoding.String
 import Simplex.Chat.Types -- (Profile(Profile), User, userId)
-import qualified Database.SQLite.Simple as DB( FromRow(..), NamedParam(..), Connection, Only(..), open, field, query, query_, executeNamed, execute, execute_)
+import qualified Database.SQLite.Simple as DB(FromRow(..), NamedParam(..), Connection, Only(..), open, field, query, query_, executeNamed, execute, execute_)
+import qualified Database.SQLite.Simple.FromRow as DB(RowParser)
 import System.Directory (getAppUserDataDirectory, createDirectoryIfMissing, getHomeDirectory)
 import System.FilePath ((</>))
 import Telegram.Bot.API.Types.Common(ChatId(..))
 import qualified Telegram.Bot.API.Types.User as TgUser
 import Data.ByteString
+import Data.Int (Int64)
 
 newtype StringRow = StringRow {getString :: String}
 
 instance DB.FromRow StringRow where
   fromRow = StringRow <$> DB.field
+
+newtype RInt64 = RInt64 {getInt :: Int64}
+
+instance DB.FromRow RInt64 where
+  fromRow :: DB.RowParser RInt64
+  fromRow = RInt64 <$> DB.field
 
 getOrCreatePuppetByTgUser :: DB.Connection -> ChatController -> TgUser.User -> Telegram.Bot.API.Types.Common.ChatId -> SMP.AConnectionRequestUri -> IO Puppet
 getOrCreatePuppetByTgUser conn cc tguser tgChat invatationLink = do
@@ -79,12 +90,8 @@ getPuppetBySimplexUser conn cc simplexUser@Simplex.Chat.Types.User{userId=simple
         Just p -> return p
         Nothing -> fail "No simplex user for this id"
 
-
-
-
---we cant choose contact by some user id, because users dont have unique ids. we assume that puppet has only 1 contact - its owner
-getPuppetOwnerContact :: Puppet -> ChatController -> IO (Maybe SimplexTypes.Contact)
-getPuppetOwnerContact puppet cc = do 
+getPuppetOwnerChat :: Puppet -> ChatController -> IO (Maybe SimplexTypes.Contact)
+getPuppetOwnerChat puppet cc = do 
   SimplexChatBot.setCCActiveUser cc (simplexUserId puppet)
   contacts <- SimplexChatBot.getContactList cc
   case contacts of 
@@ -130,3 +137,29 @@ getTelegramToken conn = do
   case tokens of
     token:_ -> return $ Just (getString token)
     _ -> return Nothing
+
+initOwnerChatIdDB :: DB.Connection -> IO ()
+initOwnerChatIdDB conn = do
+    -- TODO: better table structure
+    -- maybe its possible to assume that puppeter always has id=1, but i dont shure how sqlite works
+    DB.execute_ conn "CREATE TABLE IF NOT EXISTS ownerChatId (puppetSimpexId INTEGER, chatId INTEGER)"
+    return ()
+
+saveOwnerChatId :: DB.Connection -> Puppet -> Int64 -> IO()
+saveOwnerChatId conn puppet chatId = do
+    -- TODO: don't insert duplicates
+    DB.executeNamed conn "INSERT INTO ownerChatId (puppetSimpexId, chatId) VALUES (:sid, :cid)" [":sid" DB.:= simplexUserId puppet, ":cid" DB.:= chatId]
+
+getOwnerChatId :: DB.Connection -> Puppet -> IO (Maybe Int64)
+getOwnerChatId conn puppet = do
+  ids <- DB.query conn "SELECT chatId from ownerChatId WHERE puppetSimpexId=?" (DB.Only $ simplexUserId puppet) :: IO [RInt64]
+  case ids of
+    id':_ -> return $ Just $ getInt id'
+    _ -> return Nothing
+
+{--
+initChatMap :: DB.Connection -> IO()
+initChatMap conn = do
+  DB.execute_ conn "CREATE TABLE IF NOT EXISTS chatMap (tgChatId INTEGER, simplexChatId INTEGER)"
+  return ()
+--}

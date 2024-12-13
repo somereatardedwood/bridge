@@ -12,18 +12,17 @@ import TelegramBot(TelegramAction, TelegramEvent(..), TelegramCommand(..))
 import Control.Concurrent.STM
 import Control.Monad
 import qualified Database.SQLite.Simple as DB
-import qualified Simplex.Messaging.Agent.Protocol as SMP (UserId, AConnectionRequestUri)
+import qualified Simplex.Messaging.Agent.Protocol as SMP (UserId, AConnectionRequestUri(..))
 import Shared
 import Control.Concurrent.MVar
 import Puppet
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text
-import qualified Simplex.Chat.Types as SimplexTypes(User(..), Contact(..))
+import qualified Simplex.Chat.Types as SimplexTypes(User(..), Contact(..), localProfileId, LocalProfile(..), contactId')
 import qualified Simplex.Chat.Bot as SimplexChatBotApi
-import Simplex.Chat.Messages (AChatItem(..), ChatInfo(..), ChatItem(..))
+import Simplex.Chat.Messages (AChatItem(..), ChatInfo(..), ChatItem(..), ChatType(..), ChatRef(..))
 import Simplex.Chat.Messages.CIContent
 import Simplex.Messaging.Encoding.String (StrEncoding(strDecode))
-import qualified Database.SQLite.Simple as DB
 
 data BridgeConfig = BridgeConfig{
     eventQueue :: TBQueue (Either ChatResponse TelegramEvent),
@@ -43,8 +42,17 @@ runBrige bridgeConfig@BridgeConfig{chatController = cc, telegramActionHandler = 
         Right telegramEvent -> processTelegramEvent telegramEvent
     where 
         processSimplexEvent event _userId = case event of
-            CRContactConnected botacc@SimplexTypes.User{SimplexTypes.userId = _userId'} contact _ ->
+            CRContactConnected botacc@SimplexTypes.User{SimplexTypes.userId = _userId'} contact@SimplexTypes.Contact{profile = p} _ -> do
+                _ownerInvatationLink <- tryReadMVar invatationLinkMVar
+                
                 when (_userId' == _userId) $ SimplexChatBotApi.sendMessage cc contact welcomeMessage
+
+                case _ownerInvatationLink of
+                    Just (SMP.ACR _ cruri) -> when (maybe "" show (SimplexTypes.contactLink p) == show cruri) (do
+                        p <- getPuppetBySimplexUser bridgedb cc botacc
+                        saveOwnerChatId bridgedb p (SimplexTypes.contactId' contact)
+                        )
+                    _ -> return ()
             CRNewChatItems {user = _user'@SimplexTypes.User{SimplexTypes.userId = _userId'}, chatItems = (AChatItem _ SMDRcv (DirectChat contact@SimplexTypes.Contact{contactId = cid}) ChatItem {content = mc@CIRcvMsgContent {}}) : _}
                 | _userId' == _userId -> do
                     case strDecode (Text.encodeUtf8 $ ciContentToText mc) of
@@ -71,9 +79,9 @@ runBrige bridgeConfig@BridgeConfig{chatController = cc, telegramActionHandler = 
                     Just invatationLink -> do
                         puppet <- getOrCreatePuppetByTgUser bridgedb cc usr chat invatationLink
                         SimplexChatBotApi.setCCActiveUser cc (simplexUserId puppet)
-                        contact' <- getPuppetOwnerContact puppet cc
-                        case contact' of 
-                            Just contact -> SimplexChatBotApi.sendMessage cc contact (Text.unpack msg)
+                        mchatId' <- getOwnerChatId bridgedb puppet
+                        case mchatId' of 
+                            Just chatId' -> SimplexChatBotApi.sendComposedMessage'' cc (ChatRef CTDirect chatId') Nothing (SimplexChatBotApi.textMsgContent' msg)
                             Nothing -> putStrLn "Cant find interlocutor's contact"
                     Nothing -> putStrLn "Missed invatation link. Cant process process telegram message" 
 
