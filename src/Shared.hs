@@ -57,8 +57,8 @@ import Data.ByteString
 import Data.Int (Int64)
 import DBTypes
 
-getOrCreatePuppetByTgUser :: DB.Connection -> ChatController -> TgUser.User -> Telegram.Bot.API.Types.Common.ChatId -> SMP.AConnectionRequestUri -> IO Puppet
-getOrCreatePuppetByTgUser conn cc tguser tgChat invatationLink = do
+getOrCreatePuppetByTgUser :: DB.Connection -> ChatController -> TgUser.User -> SMP.AConnectionRequestUri -> IO Puppet
+getOrCreatePuppetByTgUser conn cc tguser invatationLink = do
   let tgUserId' = TgUser.userId tguser
   puppet' <- getPuppetByTgId conn tgUserId'
   case puppet' of
@@ -67,7 +67,7 @@ getOrCreatePuppetByTgUser conn cc tguser tgChat invatationLink = do
     Nothing -> do
       let displayName = (TgUser.userFirstName tguser) <> (fromMaybe (Text.pack "") (TgUser.userLastName tguser))
       correspondingSimplexUser@Simplex.Chat.Types.User{userId = simplexUserId'} <- SimplexChatBot.createActiveUser cc (Profile {displayName, fullName = "", image = Nothing, contactLink = Nothing, preferences = Nothing}) 
-      let puppet = Puppet {tgUserId = tgUserId', simplexUserId = simplexUserId', tgChatId = tgChat}
+      let puppet = Puppet {tgUserId = tgUserId', simplexUserId = simplexUserId'}
       insertPuppet conn False puppet
       SimplexChatBot.sendContactInvatation cc invatationLink
       return puppet
@@ -146,7 +146,6 @@ getOwnerChatId conn puppet = do
   case ids of
     id':_ -> return $ Just $ getInt id'
     _ -> return Nothing
-
 {--
 initChatMap :: DB.Connection -> IO()
 initChatMap conn = do

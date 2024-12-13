@@ -68,8 +68,9 @@ runBrige bridgeConfig@BridgeConfig{chatController = cc, telegramActionHandler = 
                 | otherwise ->
                     (
                         do
-                            p@Puppet{tgChatId = tgChat} <- getPuppetBySimplexUser bridgedb cc _user'
-                            tgActionHandler $ Right $ MsgToChat tgChat (ciContentToText mc)
+                            puppet <- getPuppetBySimplexUser bridgedb cc _user'
+                            mtgChatId <- getPuppetTgChat bridgedb puppet
+                            maybe (putStrLn "Missing tg chat for puppet") (\tgChatId -> tgActionHandler $ Right $ MsgToChat tgChatId (ciContentToText mc)) mtgChatId
                     )
             _ -> pure ()
         processTelegramEvent event = case event of 
@@ -77,7 +78,8 @@ runBrige bridgeConfig@BridgeConfig{chatController = cc, telegramActionHandler = 
                 invatationLink' <- tryReadMVar invatationLinkMVar
                 case invatationLink' of
                     Just invatationLink -> do
-                        puppet <- getOrCreatePuppetByTgUser bridgedb cc usr chat invatationLink
+                        puppet <- getOrCreatePuppetByTgUser bridgedb cc usr invatationLink
+                        savePuppetTgChat bridgedb puppet chat
                         SimplexChatBotApi.setCCActiveUser cc (simplexUserId puppet)
                         mchatId' <- getOwnerChatId bridgedb puppet
                         case mchatId' of 

@@ -70,7 +70,7 @@ initializeSimplexChatCore cfg@ChatConfig {confirmMigrations, testView} opts@Chat
                                         Just u -> pure u
                                         Nothing -> do
                                                 u@User{userId} <- createActiveUser cc
-                                                insertPuppet botDB True (Puppet {tgUserId = TelegramAPI.UserId 0, simplexUserId = userId, tgChatId = Telegram.Bot.API.Types.Common.ChatId 0})
+                                                insertPuppet botDB True (Puppet {tgUserId = TelegramAPI.UserId 0, simplexUserId = userId})
                                                 return u
 
 runSimplexChat :: ChatOpts -> User -> ChatController -> (User -> ChatController -> IO ()) -> IO ()

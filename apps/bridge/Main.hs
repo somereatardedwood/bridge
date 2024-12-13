@@ -64,6 +64,7 @@ main = do
   initOwnerLinkDB botDB
   initTelegramTokenDB botDB
   initOwnerChatIdDB botDB
+  initPuppetTgChatDB botDB
 
   opts <- welcomeGetOpts
   token <- askTelegramToken botDB
