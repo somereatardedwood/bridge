@@ -12,6 +12,7 @@ executable bridge
   main-is: Main.hs
   other-modules:
       Bridge
+      DBTypes
       Puppet
       Shared
       SimplexBot

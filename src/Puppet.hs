@@ -21,22 +21,13 @@ import Data.List
 import Data.Int (Int64)
 import System.Directory (getAppUserDataDirectory, createDirectoryIfMissing, getHomeDirectory)
 import System.FilePath ((</>))
+import DBTypes
 
 data Puppet = Puppet {
     tgUserId :: TelegramAPI.UserId,
     simplexUserId :: SMP.UserId,
     tgChatId :: Telegram.Bot.API.Types.Common.ChatId
 }
-
-newtype RSimplexUserID = RSimplexUserID {getUID :: SMP.UserId}
-
-newtype RTelegramUserId = RTelegramUserId{ getTgUID :: TelegramAPI.UserId}
-
-instance FromRow RSimplexUserID where
-  fromRow = RSimplexUserID <$> field
-
-instance FromRow RTelegramUserId where
-  fromRow = RTelegramUserId . TelegramAPI.UserId <$> field
 
 instance FromRow Puppet where
     fromRow = (\ _ _ sid tguid tgchatid-> Puppet {tgUserId = TelegramAPI.UserId tguid, simplexUserId = sid, tgChatId = Telegram.Bot.API.Types.Common.ChatId tgchatid}) <$> (field::RowParser Integer) <*> (field::RowParser Integer) <*> field <*> field <*> field

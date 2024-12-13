@@ -55,17 +55,7 @@ import Telegram.Bot.API.Types.Common(ChatId(..))
 import qualified Telegram.Bot.API.Types.User as TgUser
 import Data.ByteString
 import Data.Int (Int64)
-
-newtype StringRow = StringRow {getString :: String}
-
-instance DB.FromRow StringRow where
-  fromRow = StringRow <$> DB.field
-
-newtype RInt64 = RInt64 {getInt :: Int64}
-
-instance DB.FromRow RInt64 where
-  fromRow :: DB.RowParser RInt64
-  fromRow = RInt64 <$> DB.field
+import DBTypes
 
 getOrCreatePuppetByTgUser :: DB.Connection -> ChatController -> TgUser.User -> Telegram.Bot.API.Types.Common.ChatId -> SMP.AConnectionRequestUri -> IO Puppet
 getOrCreatePuppetByTgUser conn cc tguser tgChat invatationLink = do
@@ -113,7 +103,7 @@ saveOwnerInvatationLink conn link = do
 
 getOwnerInvatationLink :: DB.Connection -> IO (Maybe SMP.AConnectionRequestUri)
 getOwnerInvatationLink conn = do
-  links <- DB.query_ conn "SELECT * from ownerInvatationLink":: IO [StringRow]
+  links <- DB.query_ conn "SELECT * from ownerInvatationLink":: IO [RString]
   case links of
     link':_ -> case strDecode  $ Text.encodeUtf8 $ Text.pack (getString link') of
       Left error -> return Nothing
@@ -133,7 +123,7 @@ saveTelegramToken conn link = do
 
 getTelegramToken :: DB.Connection -> IO (Maybe String)
 getTelegramToken conn = do
-  tokens <- DB.query_ conn "SELECT * from telegramToken":: IO [StringRow]
+  tokens <- DB.query_ conn "SELECT * from telegramToken":: IO [RString]
   case tokens of
     token:_ -> return $ Just (getString token)
     _ -> return Nothing
