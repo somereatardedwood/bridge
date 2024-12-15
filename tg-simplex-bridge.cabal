@@ -16,6 +16,7 @@ executable bridge
       Puppet
       Shared
       SimplexBot
+      SimplexBotApi
       TelegramBot
       Paths_tg_simplex_bridge
   hs-source-dirs:

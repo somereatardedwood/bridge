@@ -27,7 +27,7 @@ import Telegram.Bot.API.Types.User
 type Model = ()
 
 data TelegramEvent =
-    MsgFromUser User ChatId Text.Text
+    MsgFromUser User Chat Text.Text
 
 data TelegramCommand =
     MsgToChat ChatId Text.Text
@@ -39,8 +39,7 @@ updateToAction update _ = do
     msg <- updateMessage update
     usr <- messageFrom msg
     text <- messageText msg
-    let chat = messageChat msg
-    return $ Left $ MsgFromUser usr (chatId chat) text
+    return $ Left $ MsgFromUser usr (messageChat msg) text
 
 handleTgAction :: TBQueue (Either ChatResponse TelegramEvent) -> TelegramAction -> Model -> Eff TelegramAction Model
 handleTgAction eventQueue action model = case action of
