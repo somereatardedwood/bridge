@@ -138,4 +138,4 @@ Delete bridge database:
 $ rm -rf $HOME/.simplex/
 ```
 
-and start again from <a href="#bridge-setup"><b>bridge setup section</b></a>
+and start again from <a href="#bridge-setup"><b>bridge setup section</b></a>.
