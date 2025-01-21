@@ -87,9 +87,9 @@ To create bot, run [BotFather](https://t.me/BotFather) in Telegram:
 
 > /newbot
 
-> /*desired_bot_account_name*
+> *desired_bot_account_name*
 
-> /*desired_bot_account_username(short_link)*
+> *desired_bot_account_username(short_link)*
 
 After that [BotFather](https://t.me/BotFather) will send you message containing bot token. You can find it under "*Use this token to access the HTTP API:*" line. You'll need to send it to the bridge as an answer on the first question.
 
