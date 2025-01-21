@@ -47,11 +47,16 @@ Install (using [i]) and set (using [s]) the following:
 3. cabal 3.10.1.0
 4. GHC 9.6.3
 
-If you cannot see desired version, press [a] to show all versions.
+If you don't see desired version, press [a] to show all versions.
 
 ### Clone into repository and build project
 
-In order to keep your $HOME directory clean, create subdirectory for building projects, i.e. $HOME/.local/opt/ and **cd** into it.
+In order to keep your ```$HOME``` directory clean, create subdirectory for building projects, i.e.
+```console
+$ mkdir $HOME/.local/opt/
+```
+
+and **cd** into it.
 
 Clone:
 
@@ -84,7 +89,7 @@ In order to run the bridge, run
 $ cabal run
 ```
 
-inside repository directory (i.e. $HOME/.local/opt/bridge, if corresponding directories were created).
+inside repository directory (i.e. ```$HOME/.local/opt/bridge```, if corresponding directories were created).
 
 ### Bot token
 
