@@ -69,7 +69,7 @@ Build:
 $ cabal run bridge
 ```
 
-## Bridge set up
+## Bridge setup
 
 In order to run the bridge, run
 
@@ -119,7 +119,7 @@ then everything is set up.
 
 ## Usage
 
-To use the bridge, send telegram link to person you wish to connect with. After that the person should **/start** the bot. On SimpleX side you'll receive contact connection. Accept it **using current profile** (**not incognito**). First of all, there is no point using incognito while connecting to bridge puppets since person on Telegram side won't see any of you SimpleX contact details; second, incognito puppets connection is not supported and may lead to connection loss, which is why not recommended.
+To use the bridge, send telegram link to person you wish to connect with. After that the person should **/start** the bot. On SimpleX side you'll receive contact connection. Accept it **using current profile** (**not incognito**). First of all, there is no point using incognito while connecting to bridge puppets, since person on Telegram side won't see any of your SimpleX contact details; second, incognito puppets connection is not supported and may lead to connection loss, which is why not recommended.
 
 After that, you should connect to each other without any problems.
 
@@ -129,3 +129,13 @@ Keep in mind, that right now you should use **only default servers** at all time
 
 * Bridging multiple telegram chats (person <-> bridge_bot) to your SimpleX profile
 * Sending and receiving text messages in both sides
+
+## If something went wrong
+
+Delete bridge database:
+
+```console
+$ rm -rf $HOME/.simplex/
+```
+
+and start again from <a href="#bridge-setup"><b>bridge setup section</b></a>
