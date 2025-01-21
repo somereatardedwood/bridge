@@ -51,26 +51,14 @@ If you don't see desired version, press [a] to show all versions.
 
 ### Clone into repository and build project
 
-In order to keep your ```$HOME``` directory clean, create subdirectory for building projects, i.e.
-```console
-$ mkdir $HOME/.local/opt/
-```
-
-and **cd** into it.
-
 Clone:
 
 ```console
 $ git clone https://github.com/EKCKABATOP54/bridge.git
 ```
 
-Change directory:
-
-```console
-$ cd bridge
-```
-
 Create necessary directory:
+
 ```console
 $ mkdir -p $HOME/.simplex/bridgeData
 ```
