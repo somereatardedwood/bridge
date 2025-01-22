@@ -18,48 +18,20 @@ where
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text
 import Data.Maybe
-import Control.Concurrent (forkIO, threadDelay, MVar)
-import Control.Concurrent.MVar
-import System.Directory (getAppUserDataDirectory, createDirectoryIfMissing)
-import Control.Monad
-import Text.Read
-import Control.Concurrent.STM
-import Control.Concurrent.Async
-import qualified Data.Map
-import Data.Foldable
 import Control.Monad.Reader
 import Puppet
-import Telegram.Bot.API as TelegramAPI
-import Telegram.Bot.Simple as TelegramAPI
 import Simplex.Chat.Controller
-import Simplex.Chat.Options
-import qualified Simplex.Chat.Types as SimplexTypes
-import qualified Simplex.Messaging.Agent.Protocol as SMP(UserId, AConnectionRequestUri(..), UserId, AConnectionRequestUri, SConnectionMode(..))
-import Simplex.Chat.Messages.CIContent
-import Simplex.Chat.Messages
-import Simplex.Chat.Terminal (terminalChatConfig)
---import qualified Simplex.Chat.Bot as SimplexChatBot
-import Simplex.Messaging.Encoding.String
+import Simplex.Messaging.Agent.Protocol(AConnectionRequestUri)
 import Simplex.Chat.Types -- (Profile(Profile), User, userId)
-import qualified Database.SQLite.Simple as DB(FromRow(..), NamedParam(..), Connection, Only(..), open, field, query, query_, executeNamed, execute, execute_, queryNamed)
-import qualified Database.SQLite.Simple.FromRow as DB(RowParser)
-import System.Directory (getAppUserDataDirectory, createDirectoryIfMissing, getHomeDirectory)
-import System.FilePath ((</>))
+import Database.SQLite.Simple as DB(Connection)
 import Telegram.Bot.API.Types.Common(ChatId(..))
 import qualified Telegram.Bot.API.Types.User as TgUser
-import qualified Telegram.Bot.API as TelegramAPI
-import qualified Telegram.Bot.Simple as TelegramAPI
-import qualified Telegram.Bot.API.Types as TelegramAPI
-import Data.ByteString as B
-import Data.Int (Int64)
 import DB.DBTypes
 import qualified DB.Puppet
-import qualified Simplex.Chat.Types as SimplexChatBot
 import qualified SimplexBotApi
-import Simplex.Chat.View (simplexChatContact)
 import BM
 
-getOrCreatePuppetByTgUser :: DB.Connection -> ChatController -> TgUser.User -> SMP.AConnectionRequestUri -> BM Puppet
+getOrCreatePuppetByTgUser :: DB.Connection -> ChatController -> TgUser.User -> AConnectionRequestUri -> BM Puppet
 getOrCreatePuppetByTgUser conn cc tguser invatationLink = do
   let tgUserId' = TgUser.userId tguser
   puppet' <- liftIO $ DB.Puppet.getPuppetByTgId conn tgUserId'

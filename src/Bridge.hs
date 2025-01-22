@@ -12,8 +12,6 @@ import Control.Monad.Trans (liftIO)
 import SimplexBotApi
 import Simplex.Chat.Controller
 import TelegramBot(TelegramAction, TelegramEvent(..), TelegramCommand(..))
-import qualified Telegram.Bot.API as TelegramAPI
-import qualified Telegram.Bot.Simple as TelegramAPI
 import qualified Telegram.Bot.API.Types as TelegramAPI
 import Control.Concurrent.STM
 import Control.Monad
@@ -24,10 +22,8 @@ import Control.Concurrent.MVar
 import Puppet
 import qualified DB.Puppet
 import qualified DB.SimplexData
-import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text
 import qualified Simplex.Chat.Types as SimplexTypes(User(..), Contact(..), localProfileId, LocalProfile(..), contactId', GroupInfo(..))
---import qualified Simplex.Chat.Bot as SimplexChatBotApi
 import qualified SimplexBotApi
 import Simplex.Chat.Messages (AChatItem(..), ChatInfo(..), ChatItem(..), ChatType(..), ChatRef(..))
 import Simplex.Chat.Messages.CIContent
