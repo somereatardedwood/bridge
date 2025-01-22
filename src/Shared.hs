@@ -17,10 +17,10 @@ module Shared
     getOwnerInvatationLink,
     getPuppetBySimplexUser,
     initOwnerContactIdDB,
-    initGroupChatDB,
-    saveOwnerContactId,
-    getOrCreatePuppetSimplexGroupByTgChat,
-    initGroupLinksDB
+    --initGroupChatDB,
+    saveOwnerContactId
+    --getOrCreatePuppetSimplexGroupByTgChat,
+    --initGroupLinksDB
 ) 
 where
 
@@ -47,7 +47,7 @@ import qualified Simplex.Messaging.Agent.Protocol as SMP(UserId, AConnectionRequ
 import Simplex.Chat.Messages.CIContent
 import Simplex.Chat.Messages
 import Simplex.Chat.Terminal (terminalChatConfig)
-import qualified Simplex.Chat.Bot as SimplexChatBot
+--import qualified Simplex.Chat.Bot as SimplexChatBot
 import Simplex.Messaging.Encoding.String
 import Simplex.Chat.Types -- (Profile(Profile), User, userId)
 import qualified Database.SQLite.Simple as DB(FromRow(..), NamedParam(..), Connection, Only(..), open, field, query, query_, executeNamed, execute, execute_, queryNamed)
@@ -65,26 +65,27 @@ import DBTypes
 import qualified Simplex.Chat.Types as SimplexChatBot
 import qualified SimplexBotApi
 import Simplex.Chat.View (simplexChatContact)
+import BM
 
-getOrCreatePuppetByTgUser :: DB.Connection -> ChatController -> TgUser.User -> SMP.AConnectionRequestUri -> IO Puppet
+getOrCreatePuppetByTgUser :: DB.Connection -> ChatController -> TgUser.User -> SMP.AConnectionRequestUri -> BM Puppet
 getOrCreatePuppetByTgUser conn cc tguser invatationLink = do
   let tgUserId' = TgUser.userId tguser
-  puppet' <- getPuppetByTgId conn tgUserId'
+  puppet' <- liftIO $ getPuppetByTgId conn tgUserId'
   case puppet' of
     Just p -> do
       return p
     Nothing -> do
       let displayName = (TgUser.userFirstName tguser) <> (fromMaybe (Text.pack "") (TgUser.userLastName tguser))
-      correspondingSimplexUser@Simplex.Chat.Types.User{userId = simplexUserId'} <- SimplexChatBot.createActiveUser cc (Profile {displayName, fullName = "", image = Nothing, contactLink = Nothing, preferences = Nothing}) 
+      correspondingSimplexUser@Simplex.Chat.Types.User{userId = simplexUserId'} <- SimplexBotApi.createActiveUser cc (Profile {displayName, fullName = "", image = Nothing, contactLink = Nothing, preferences = Nothing}) 
       let puppet = Puppet {tgUserId = tgUserId', simplexUserId = simplexUserId'}
-      insertPuppet conn False puppet
-      SimplexChatBot.sendContactInvatation cc invatationLink
+      liftIO $ insertPuppet conn False puppet
+      SimplexBotApi.sendContactInvatation cc invatationLink
       return puppet
 
 
-getPuppetBySimplexUser :: DB.Connection -> ChatController -> Simplex.Chat.Types.User -> IO Puppet
+getPuppetBySimplexUser :: DB.Connection -> ChatController -> Simplex.Chat.Types.User -> BM Puppet
 getPuppetBySimplexUser conn cc simplexUser@Simplex.Chat.Types.User{userId=simplexUserId} = do 
-    puppet' <- getPuppetBySimplexId conn simplexUserId
+    puppet' <- liftIO $ getPuppetBySimplexId conn simplexUserId
     case puppet' of
         Just p -> return p
         Nothing -> fail "No simplex user for this id"
@@ -157,6 +158,8 @@ getOwnerContactId conn puppet = do
     id':_ -> return $ Just $ getInt id'
     _ -> return Nothing
 
+
+{--
 initGroupChatDB :: DB.Connection -> IO ()
 initGroupChatDB conn = do
     DB.execute_ conn "CREATE TABLE IF NOT EXISTS groupChats (puppetId INTEGER, tgChatId INTEGER, simplexChatId INTEGER)"
@@ -178,7 +181,7 @@ getOrCreatePuppetSimplexGroupByTgChat ownerContactId botId puppet conn cc chat =
   sChatId' <- getPuppetGroupChatByTgChatId conn puppet (TelegramAPI.chatId chat)
   case sChatId' of
     Just sChatId -> (do
-      SimplexChatBot.setCCActiveUser cc (simplexUserId puppet) -- request group information on behalf of a puppet
+      SimplexBotApi.setCCActiveUser cc (simplexUserId puppet) -- request group information on behalf of a puppet
       putStrLn $ "getting guid for puppet" ++ show sChatId
       gInfo <- SimplexBotApi.getGroupInfo cc sChatId
       return $ Just gInfo)
@@ -187,8 +190,8 @@ getOrCreatePuppetSimplexGroupByTgChat ownerContactId botId puppet conn cc chat =
       case mlink of
         Just link -> connectPuppetToGroup conn cc puppet link (TelegramAPI.chatId chat)
         Nothing -> do
-          SimplexChatBot.setCCActiveUser cc botId  -- create group on behalf of main bot
-          groupInfo@SimplexChatBot.GroupInfo {groupId = gId} <- SimplexChatBot.createGroup cc (SimplexChatBot.GroupProfile {
+          SimplexBotApi.setCCActiveUser cc botId  -- create group on behalf of main bot
+          groupInfo@SimplexChatBot.GroupInfo {groupId = gId} <- SimplexBotApi.createGroup cc (SimplexChatBot.GroupProfile {
                 displayName = fromMaybe (Text.pack $ show $ TelegramAPI.chatId chat) (TelegramAPI.chatTitle chat),
                 fullName = "",
                 description = Nothing,
@@ -204,7 +207,7 @@ getOrCreatePuppetSimplexGroupByTgChat ownerContactId botId puppet conn cc chat =
             Nothing -> putStrLn "Failed to connect to group by link" >> return Nothing
   where
     connectPuppetToGroup conn cc p l tgChatId = do
-      SimplexChatBot.setCCActiveUser cc (simplexUserId puppet)
+      SimplexBotApi.setCCActiveUser cc (simplexUserId puppet)
       gid <- SimplexBotApi.connectToGroupByLink cc l --dirty!!!!
       putStrLn $ "saving guid for puppet" ++ show gid
       savePuppetGroupChat conn p (tgChatId, gid)
@@ -246,3 +249,6 @@ getGroupLink conn  (TelegramAPI.ChatId tgChatId) = do
           Right link -> return $ Just link
           
           --return $ Just $ getInt simplexChatId
+
+
+--}

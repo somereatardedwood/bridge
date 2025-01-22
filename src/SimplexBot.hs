@@ -36,7 +36,8 @@ import qualified Data.Text.Encoding as Text
 import qualified Telegram.Bot.API as TelegramAPI
 import Control.Concurrent.MVar
 import Simplex.Messaging.Agent.Protocol -- (UserId, AConnectionRequestUri(..), UserId)
-import qualified Simplex.Chat.Bot as SimplexChatBotApi
+--import qualified Simplex.Chat.Bot as SimplexChatBotApi
+import SimplexBotApi
 import Simplex.Chat.Messages.CIContent
 import Simplex.Chat.View (serializeChatResponse)
 import Simplex.Chat.Messages
@@ -62,14 +63,14 @@ initializeSimplexChatCore cfg@ChatConfig {confirmMigrations, testView} opts@Chat
     run db@ChatDatabase {chatStore} = do
       u_ <- getSelectActiveUser chatStore botDB
       cc <- newChatController db u_ cfg opts False
-      u <- createActiveUserIfMissed cc u_
+      u <- createMainBotIfMissed cc u_
       unless testView $ putStrLn $ "Current user: " <> userStr u
       forkIO (runSimplexChat opts u cc chat)
       return cc
-    createActiveUserIfMissed cc mu = case mu of
+    createMainBotIfMissed cc mu = case mu of
                                         Just u -> pure u
                                         Nothing -> do
-                                                u@User{userId} <- createActiveUser cc
+                                                u@User{userId} <- createMainBot cc
                                                 insertPuppet botDB True (Puppet {tgUserId = TelegramAPI.UserId 0, simplexUserId = userId})
                                                 return u
 
@@ -91,8 +92,8 @@ getSelectActiveUser st botDB = do
         puppeterUserId <- selectPuppeteerUserId botDB
         return $ puppeterUserId >>= (\uid -> find (\u@User{userId} -> userId == uid) users)
 
-createActiveUser :: ChatController -> IO User
-createActiveUser cc = do
+createMainBot :: ChatController -> IO User
+createMainBot cc = do
   putStrLn
     "No bot profiles found, it will be created now.\n\
     \Please choose your bot name.\n\
@@ -103,7 +104,7 @@ createActiveUser cc = do
     loop = do
       displayName <- Text.pack <$> getWithPrompt "bot display name"
       let profile = Just Profile {displayName, fullName = "", image = Nothing, contactLink = Nothing, preferences = Nothing}
-      execChatCommand' (CreateActiveUser NewUser {profile, pastTimestamp = False}) `runReaderT` cc >>= \case
+      execChatCommand' (Simplex.Chat.Controller.CreateActiveUser NewUser {profile, pastTimestamp = False}) `runReaderT` cc >>= \case
         CRActiveUser user -> pure user
         r -> do
           ts <- getCurrentTime
@@ -123,7 +124,7 @@ userStr User {localDisplayName, profile = LocalProfile {fullName}} =
 mySimplexBot :: MVar UserId -> DB.Connection -> TBQueue (Either ChatResponse TelegramEvent) -> User -> ChatController -> IO ()
 mySimplexBot puppeterIdMVar conn eventQueue _user@User{userId = _userId} cc = do
   putMVar puppeterIdMVar _userId
-  SimplexChatBotApi.initializeBotAddress cc
+  SimplexBotApi.initializeBotAddress cc
   race_ (forever $ void getLine) . forever $ do
     (_, _, resp) <- atomically . readTBQueue $ outputQ cc
     atomically $ writeTBQueue eventQueue (Left resp)

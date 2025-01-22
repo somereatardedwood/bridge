@@ -7,14 +7,45 @@
 
 module SimplexBotApi
 (
+    initializeBotAddress,
+    setCCActiveUser,
+    createActiveUser,
+    sendContactInvatation,
+    createGroup,
     sendGroupInvatation,
     createGroupLink,
     connectToGroupByLink,
-    getGroupInfo
+    getGroupInfo,
+    
+    sendMessage,
+    sendComposedMessage'',
+    textMsgContent,
+    textMsgContent'
 )
 
 where
 
+import BM
+import Control.Monad.Except
+import Control.Monad
+import Control.Monad.Trans (liftIO)
+import Simplex.Chat.Controller
+import qualified Simplex.Chat.Bot as SimplexChatBot
+import Simplex.Chat.Controller
+import Simplex.Chat.Core(sendChatCmd)
+import Simplex.Chat.Types(Profile, Contact, ContactId, GroupProfile, GroupInfo, User, GroupId, ConnReqContact, pccConnId)
+import Simplex.Chat.Types.Shared(GroupMemberRole(..))
+import Simplex.Chat.Messages(ChatItemId, ChatRef)
+import Simplex.Chat.Store(UserContactLink (..), StoreError(..), AutoAccept(..))
+import Simplex.Messaging.Agent.Protocol (AConnectionRequestUri (..), UserId)
+import Simplex.Chat.Protocol(MsgContent (..))
+import Data.Int (Int64)
+import qualified Data.ByteString.Char8 as B
+import qualified Data.Text as T
+import Simplex.Messaging.Encoding.String (strEncode)
+import System.Exit (exitFailure)
+
+{--
 import Control.Concurrent.Async
 import Control.Concurrent.STM
 import Control.Monad
@@ -34,23 +65,7 @@ import Simplex.Chat.Types
 
 import Simplex.Chat.Types.Shared
 import Data.Int (Int64)
-
-{--
-chatBotRepl :: String -> (Contact -> String -> IO String) -> User -> ChatController -> IO ()
-chatBotRepl welcome answer _user cc = do
-  initializeBotAddress cc
-  race_ (forever $ void getLine) . forever $ do
-    (_, _, resp) <- atomically . readTBQueue $ outputQ cc
-    case resp of
-      CRContactConnected _ contact _ -> do
-        contactConnected contact
-        void $ sendMessage cc contact welcome
-      CRNewChatItems {chatItems = (AChatItem _ SMDRcv (DirectChat contact) ChatItem {content = mc@CIRcvMsgContent {}}) : _} -> do
-        let msg = T.unpack $ ciContentToText mc
-        void $ sendMessage cc contact =<< answer contact msg
-      _ -> pure ()
-  where
-    contactConnected Contact {localDisplayName} = putStrLn $ T.unpack localDisplayName <> " connected"
+--}
 
 initializeBotAddress :: ChatController -> IO ()
 initializeBotAddress = initializeBotAddress' True
@@ -70,52 +85,115 @@ initializeBotAddress' logAddress cc = do
       when logAddress $ putStrLn $ "Bot's contact address is: " <> B.unpack (strEncode uri)
       void $ sendChatCmd cc $ AddressAutoAccept $ Just AutoAccept {acceptIncognito = False, autoReply = Nothing}
 
-sendMessage :: ChatController -> Contact -> String -> IO ()
-sendMessage cc ct = sendComposedMessage cc ct Nothing . textMsgContent
 
-sendMessage' :: ChatController -> ContactId -> String -> IO ()
-sendMessage' cc ctId = sendComposedMessage' cc ctId Nothing . textMsgContent
+sendMessageErrorHandler :: ChatResponse -> BM ()
+sendMessageErrorHandler r = case r of
+  CRNewChatItems {} -> return ()
+  e -> throwError $ UnexpectedChatResponse e
 
-sendComposedMessage :: ChatController -> Contact -> Maybe ChatItemId -> MsgContent -> IO ()
-sendComposedMessage cc = sendComposedMessage' cc . contactId'
+sendMessage :: ChatController -> Contact -> String -> BM ()
+sendMessage cc contact msg = (liftIO $ SimplexChatBot.sendMessage cc contact msg) >>= sendMessageErrorHandler
 
-sendComposedMessage' :: ChatController -> ContactId -> Maybe ChatItemId -> MsgContent -> IO ()
-sendComposedMessage' cc ctId quotedItemId msgContent = do
-  let cm = ComposedMessage {fileSource = Nothing, quotedItemId, msgContent}
-  sendChatCmd cc (APISendMessages (ChatRef CTDirect ctId) False Nothing (cm :| [])) >>= \case
-    CRNewChatItems {} -> printLog cc CLLInfo $ "sent message to contact ID " <> show ctId
-    r -> putStrLn $ "unexpected send message response: " <> show r
+sendMessage' :: ChatController -> ContactId -> String -> BM ()
+sendMessage' cc contact msg = (liftIO $ SimplexChatBot.sendMessage' cc contact msg) >>= sendMessageErrorHandler
 
-sendComposedMessage'' :: ChatController -> ChatRef -> Maybe ChatItemId -> MsgContent -> IO ()
-sendComposedMessage'' cc chatRef quotedItemId msgContent = do
-  let cm = ComposedMessage {fileSource = Nothing, quotedItemId, msgContent}
-  sendChatCmd cc (APISendMessages chatRef False Nothing (cm :| [])) >>= \case
-    CRNewChatItems {} -> printLog cc CLLInfo $ "sent message to chat" <> show chatRef
-    r -> putStrLn $ "unexpected send message response: " <> show r
+sendComposedMessage :: ChatController -> Contact -> Maybe ChatItemId -> MsgContent -> BM ()
+sendComposedMessage cc contact quotedItemId msg = (liftIO $ SimplexChatBot.sendComposedMessage cc contact quotedItemId msg) >>= sendMessageErrorHandler
 
-deleteMessage :: ChatController -> Contact -> ChatItemId -> IO ()
-deleteMessage cc ct chatItemId = do
-  let cmd = APIDeleteChatItem (contactRef ct) [chatItemId] CIDMInternal
-  sendChatCmd cc cmd >>= \case
-    CRChatItemsDeleted {} -> printLog cc CLLInfo $ "deleted message(s) from " <> contactInfo ct
-    r -> putStrLn $ "unexpected delete message response: " <> show r
+sendComposedMessage' :: ChatController -> ContactId -> Maybe ChatItemId -> MsgContent -> BM ()
+sendComposedMessage' cc ctId quotedItemId msgContent = (liftIO $ SimplexChatBot.sendComposedMessage' cc ctId quotedItemId msgContent) >>= sendMessageErrorHandler
 
-contactRef :: Contact -> ChatRef
-contactRef = ChatRef CTDirect . contactId'
+sendComposedMessage'' :: ChatController -> ChatRef -> Maybe ChatItemId -> MsgContent -> BM ()
+sendComposedMessage'' cc chatRef quotedItemId msgContent = (liftIO $ SimplexChatBot.sendComposedMessage'' cc chatRef quotedItemId msgContent) >>= sendMessageErrorHandler
+
+sendContactInvatation :: ChatController -> AConnectionRequestUri -> BM ()
+sendContactInvatation cc invatationLink = (liftIO $ SimplexChatBot.sendContactInvatation cc invatationLink) >>= \case
+  CRSentInvitation {} -> return ()
+  r -> throwError $ UnexpectedChatResponse r
+
+createActiveUser :: ChatController -> Profile -> BM User
+createActiveUser cc newUserProfile = (liftIO $ SimplexChatBot.createActiveUser cc newUserProfile) >>= \case
+  CRActiveUser user -> pure user
+  r -> throwError $ UnexpectedChatResponse r
+
+setCCActiveUser :: ChatController -> UserId -> BM ()
+setCCActiveUser cc uid = (liftIO $ SimplexChatBot.setCCActiveUser cc uid) >>= \case
+  CRActiveUser _ -> pure ()
+  r -> throwError $ UnexpectedChatResponse r
+
+getContactList :: ChatController -> BM [Contact]
+getContactList cc = (liftIO $ SimplexChatBot.getContactList cc) >>= \case
+    CRContactsList {contacts = contactList} -> return contactList
+    r -> throwError $ UnexpectedChatResponse r
+    
+createGroup :: ChatController -> GroupProfile -> BM GroupInfo
+createGroup cc groupProfile = (liftIO $ SimplexChatBot.createGroup cc groupProfile) >>= \case
+  CRGroupCreated _ groupInfo -> return groupInfo
+  r -> throwError $ UnexpectedChatResponse r
 
 textMsgContent :: String -> MsgContent
-textMsgContent = MCText . T.pack
+textMsgContent = SimplexChatBot.textMsgContent
 
 textMsgContent' :: T.Text -> MsgContent
-textMsgContent' = MCText
+textMsgContent' = SimplexChatBot.textMsgContent'
 
-printLog :: ChatController -> ChatLogLevel -> String -> IO ()
-printLog cc level s
-  | logLevel (config cc) <= level = putStrLn s
-  | otherwise = pure ()
+-------------------------------------------------------------
 
-contactInfo :: Contact -> String
-contactInfo Contact {contactId, localDisplayName} = T.unpack localDisplayName <> " (" <> show contactId <> ")"
+
+sendGroupInvatation :: ChatController -> GroupId -> ContactId -> BM ()
+sendGroupInvatation cc groupId contactId = do
+    (liftIO $ sendChatCmd cc (APIAddMember groupId contactId GRMember)) >>= \case
+        CRSentGroupInvitation {} -> return ()
+        r -> throwError $ UnexpectedChatResponse r
+
+createGroupLink :: ChatController -> GroupId -> BM ConnReqContact
+createGroupLink cc groupId = do
+    (liftIO $ sendChatCmd cc (APICreateGroupLink groupId GRMember)) >>= \case
+        CRGroupLinkCreated {connReqContact} -> return connReqContact
+        r -> throwError $ UnexpectedChatResponse r
+    
+connectToGroupByLink :: ChatController -> AConnectionRequestUri -> BM Int64
+connectToGroupByLink cc link = do
+    (liftIO $ sendChatCmd cc (Connect False (Just link))) >>= \case
+        CRSentInvitation {connection = c} -> return (pccConnId c)
+        r -> throwError $ UnexpectedChatResponse r
+
+getGroupInfo :: ChatController -> Int64 -> BM GroupInfo
+getGroupInfo cc gId =
+  (liftIO $ sendChatCmd cc (APIGroupInfo gId))>>= \case
+    CRGroupInfo {groupInfo = gInfo} -> return gInfo
+    r -> throwError $ UnexpectedChatResponse r
+
+
+-------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{--
 
 sendContactInvatation :: ChatController -> AConnectionRequestUri ->  IO ()
 sendContactInvatation cc invatationLink= do 
@@ -158,6 +236,8 @@ getGroupInfo cc gId =
 
 --}
 
+
+{--
 sendGroupInvatation :: ChatController -> GroupId -> ContactId -> IO ()
 sendGroupInvatation cc groupId contactId = do
     print contactId
@@ -183,3 +263,5 @@ getGroupInfo cc gId =
   sendChatCmd cc (APIGroupInfo gId) >>= \case
     CRGroupInfo {groupInfo = gInfo} -> return gInfo
     e -> fail $ "Can't get group info" ++ show e
+
+--}
