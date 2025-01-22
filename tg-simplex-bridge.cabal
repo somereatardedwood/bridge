@@ -13,7 +13,8 @@ executable bridge
   other-modules:
       BM
       Bridge
-      DBTypes
+      DB.DBTypes
+      DB.Puppet
       Puppet
       Shared
       SimplexBot

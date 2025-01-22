@@ -22,6 +22,7 @@ import qualified Simplex.Messaging.Agent.Protocol as SMP (UserId, AConnectionReq
 import Shared
 import Control.Concurrent.MVar
 import Puppet
+import qualified DB.Puppet
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text
 import qualified Simplex.Chat.Types as SimplexTypes(User(..), Contact(..), localProfileId, LocalProfile(..), contactId', GroupInfo(..))
@@ -85,7 +86,7 @@ runBrige bridgeConfig@BridgeConfig{chatController = cc, telegramActionHandler = 
                     (
                         do
                             puppet <- getPuppetBySimplexUser bridgedb cc _user'
-                            mtgChatId <- liftIO $ getPuppetTgChat bridgedb puppet
+                            mtgChatId <- liftIO $ DB.Puppet.getPuppetTgChat bridgedb puppet
                             liftIO $ maybe (putStrLn "Missing tg chat for puppet") (\tgChatId -> tgActionHandler $ Right $ MsgToChat tgChatId (ciContentToText mc)) mtgChatId
                     )
             ev -> liftIO $ putStrLn $ "NEW EVENT\n" ++ show ev
@@ -102,7 +103,7 @@ runBrige bridgeConfig@BridgeConfig{chatController = cc, telegramActionHandler = 
                     Nothing -> liftIO $ putStrLn "Missed invatation link. Cant process process telegram message"
         processTelegramPrivateMessage cc bridgedb invatationLink usr chat msg = do
             puppet <- getOrCreatePuppetByTgUser bridgedb cc usr invatationLink
-            liftIO $ savePuppetTgChat bridgedb puppet (TelegramAPI.chatId chat)
+            liftIO $ DB.Puppet.savePuppetTgChat bridgedb puppet (TelegramAPI.chatId chat)
             SimplexBotApi.setCCActiveUser cc (simplexUserId puppet)
             mchatId' <- liftIO $ getOwnerContactId bridgedb puppet
             liftIO $ putStrLn $ "Owner contact id: " ++ show mchatId'

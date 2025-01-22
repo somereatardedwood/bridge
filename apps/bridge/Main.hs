@@ -12,6 +12,7 @@ module Main where
 import Bridge
 import Numeric.Natural(Natural)
 import Puppet
+import qualified DB.Puppet
 import SimplexBot
 import TelegramBot
 import Simplex.Chat.Options
@@ -60,11 +61,11 @@ main = do
   appDir >>= createDirectoryIfMissing False
   let botDbFile = fmap (flip (</>) "botDB.db") appDir
   botDB <- botDbFile >>= DB.open
-  initPuppetDB botDB
+  DB.Puppet.initPuppetDB botDB
   initOwnerLinkDB botDB
   initTelegramTokenDB botDB
   initOwnerContactIdDB botDB
-  initPuppetTgChatDB botDB
+  DB.Puppet.initPuppetTgChatDB botDB
   --initGroupChatDB botDB
   --initGroupLinksDB botDB
 

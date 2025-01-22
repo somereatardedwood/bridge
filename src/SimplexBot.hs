@@ -47,6 +47,7 @@ import Simplex.Messaging.Encoding.String (StrEncoding(strDecode))
 import TelegramBot (TelegramEvent(..))
 import Telegram.Bot.API.Types.Common(ChatId(..))
 import Puppet
+import DB.Puppet
 
 initializeSimplexChatCore :: ChatConfig -> ChatOpts -> DB.Connection ->  (User -> ChatController -> IO ()) -> IO ChatController
 initializeSimplexChatCore cfg@ChatConfig {confirmMigrations, testView} opts@ChatOpts {coreOptions = CoreChatOpts {dbFilePrefix, dbKey, logAgent}} botDB chat =
@@ -71,7 +72,7 @@ initializeSimplexChatCore cfg@ChatConfig {confirmMigrations, testView} opts@Chat
                                         Just u -> pure u
                                         Nothing -> do
                                                 u@User{userId} <- createMainBot cc
-                                                insertPuppet botDB True (Puppet {tgUserId = TelegramAPI.UserId 0, simplexUserId = userId})
+                                                DB.Puppet.insertPuppet botDB True (Puppet {tgUserId = TelegramAPI.UserId 0, simplexUserId = userId})
                                                 return u
 
 runSimplexChat :: ChatOpts -> User -> ChatController -> (User -> ChatController -> IO ()) -> IO ()

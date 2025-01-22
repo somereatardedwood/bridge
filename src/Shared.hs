@@ -61,7 +61,8 @@ import qualified Telegram.Bot.Simple as TelegramAPI
 import qualified Telegram.Bot.API.Types as TelegramAPI
 import Data.ByteString as B
 import Data.Int (Int64)
-import DBTypes
+import DB.DBTypes
+import qualified DB.Puppet
 import qualified Simplex.Chat.Types as SimplexChatBot
 import qualified SimplexBotApi
 import Simplex.Chat.View (simplexChatContact)
@@ -70,7 +71,7 @@ import BM
 getOrCreatePuppetByTgUser :: DB.Connection -> ChatController -> TgUser.User -> SMP.AConnectionRequestUri -> BM Puppet
 getOrCreatePuppetByTgUser conn cc tguser invatationLink = do
   let tgUserId' = TgUser.userId tguser
-  puppet' <- liftIO $ getPuppetByTgId conn tgUserId'
+  puppet' <- liftIO $ DB.Puppet.getPuppetByTgId conn tgUserId'
   case puppet' of
     Just p -> do
       return p
@@ -78,14 +79,14 @@ getOrCreatePuppetByTgUser conn cc tguser invatationLink = do
       let displayName = (TgUser.userFirstName tguser) <> (fromMaybe (Text.pack "") (TgUser.userLastName tguser))
       correspondingSimplexUser@Simplex.Chat.Types.User{userId = simplexUserId'} <- SimplexBotApi.createActiveUser cc (Profile {displayName, fullName = "", image = Nothing, contactLink = Nothing, preferences = Nothing}) 
       let puppet = Puppet {tgUserId = tgUserId', simplexUserId = simplexUserId'}
-      liftIO $ insertPuppet conn False puppet
+      liftIO $ DB.Puppet.insertPuppet conn False puppet
       SimplexBotApi.sendContactInvatation cc invatationLink
       return puppet
 
 
 getPuppetBySimplexUser :: DB.Connection -> ChatController -> Simplex.Chat.Types.User -> BM Puppet
 getPuppetBySimplexUser conn cc simplexUser@Simplex.Chat.Types.User{userId=simplexUserId} = do 
-    puppet' <- liftIO $ getPuppetBySimplexId conn simplexUserId
+    puppet' <- liftIO $ DB.Puppet.getPuppetBySimplexId conn simplexUserId
     case puppet' of
         Just p -> return p
         Nothing -> fail "No simplex user for this id"

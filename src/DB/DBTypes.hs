@@ -1,4 +1,4 @@
-module DBTypes
+module DB.DBTypes
 (
     RSimplexUserID(..),
     RTelegramUserId(..),
