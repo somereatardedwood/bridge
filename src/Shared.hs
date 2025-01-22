@@ -7,9 +7,6 @@
 
 module Shared
 (
-    initTelegramTokenDB,
-    saveTelegramToken,
-    getTelegramToken,
     getOrCreatePuppetByTgUser,
     getPuppetBySimplexUser,
     --initGroupChatDB,
@@ -93,24 +90,6 @@ getPuppetOwnerChat puppet cc = do
     [] -> return Nothing
     c:_ -> return $ Just c
 --}
-
-initTelegramTokenDB :: DB.Connection -> IO ()
-initTelegramTokenDB conn = do
-    DB.execute_ conn "CREATE TABLE IF NOT EXISTS telegramToken (token TEXT)"
-    return ()
-
-saveTelegramToken :: DB.Connection -> String -> IO()
-saveTelegramToken conn link = do
-    let linkStr = strEncode link
-    -- TODO: don't insert duplicates
-    DB.execute conn "INSERT INTO telegramToken (token) VALUES (?)" (DB.Only link)
-
-getTelegramToken :: DB.Connection -> IO (Maybe String)
-getTelegramToken conn = do
-  tokens <- DB.query_ conn "SELECT * from telegramToken":: IO [RString]
-  case tokens of
-    token:_ -> return $ Just (getString token)
-    _ -> return Nothing
 
 {--
 initGroupChatDB :: DB.Connection -> IO ()

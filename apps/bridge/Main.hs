@@ -16,6 +16,7 @@ import Puppet
 import qualified Database.SQLite.Simple as DB(open, Connection)
 import qualified DB.Puppet
 import qualified DB.SimplexData
+import qualified DB.TelegramData
 
 import SimplexBot
 import TelegramBot
@@ -47,13 +48,13 @@ welcomeGetOpts = do
 
 askTelegramToken :: DB.Connection -> IO (Token)
 askTelegramToken db = do
-  mToken <- getTelegramToken db
+  mToken <- DB.TelegramData.getTelegramToken db
   case mToken of
     Just t -> return $ Token $ Text.pack t
     Nothing -> do
       putStrLn "Enter telegram bot token"
       token <- getLine
-      saveTelegramToken db token
+      DB.TelegramData.insertTelegramToken db token
       return $ Token $ Text.pack token
 
 main :: IO ()
@@ -66,7 +67,7 @@ main = do
   botDB <- botDbFile >>= DB.open
   DB.Puppet.initPuppetDB botDB
   DB.SimplexData.initOwnerInvatationLinkDB botDB
-  initTelegramTokenDB botDB
+  DB.TelegramData.initTelegramTokenDB botDB
   DB.Puppet.initPuppetOwnerContactIdDB botDB
   DB.Puppet.initPuppetTgChatDB botDB
   --initGroupChatDB botDB
