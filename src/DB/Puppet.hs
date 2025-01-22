@@ -9,7 +9,10 @@ module DB.Puppet
     getPuppetBySimplexId,
     initPuppetTgChatDB,
     savePuppetTgChat,
-    getPuppetTgChat
+    getPuppetTgChat,
+    initPuppetOwnerContactIdDB,
+    insertPuppetOwnerContactId,
+    getPuppetOwnerContactId
 )
 
 where
@@ -89,3 +92,23 @@ getPuppetTgChat conn puppet = do
     _ -> return Nothing
     where
         TelegramAPI.UserId tgid = tgUserId puppet
+
+
+initPuppetOwnerContactIdDB :: Connection -> IO ()
+initPuppetOwnerContactIdDB conn = do
+    -- TODO: better table structure
+    -- maybe its possible to assume that puppeter always has id=1, but i dont shure how sqlite works
+    execute_ conn "CREATE TABLE IF NOT EXISTS puppetOwnerContactId (puppetSimpexId INTEGER, contactId INTEGER)"
+    return ()
+
+insertPuppetOwnerContactId :: Connection -> Puppet -> Int64 -> IO()
+insertPuppetOwnerContactId conn puppet contactId = do
+    -- TODO: don't insert duplicates
+    executeNamed conn "INSERT INTO puppetOwnerContactId (puppetSimpexId, contactId) VALUES (:sid, :cid)" [":sid" := simplexUserId puppet, ":cid" := contactId]
+
+getPuppetOwnerContactId :: Connection -> Puppet -> IO (Maybe Int64)
+getPuppetOwnerContactId conn puppet = do
+  ids <- query conn "SELECT contactId from puppetOwnerContactId WHERE puppetSimpexId=?" (Only $ simplexUserId puppet) :: IO [RInt64]
+  case ids of
+    id':_ -> return $ Just $ getInt id'
+    _ -> return Nothing

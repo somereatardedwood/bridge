@@ -11,14 +11,11 @@ module Shared
     saveTelegramToken,
     getTelegramToken,
     getOrCreatePuppetByTgUser,
-    getOwnerContactId,
     initOwnerLinkDB,
     saveOwnerInvatationLink,
     getOwnerInvatationLink,
     getPuppetBySimplexUser,
-    initOwnerContactIdDB,
     --initGroupChatDB,
-    saveOwnerContactId
     --getOrCreatePuppetSimplexGroupByTgChat,
     --initGroupLinksDB
 ) 
@@ -139,26 +136,6 @@ getTelegramToken conn = do
   case tokens of
     token:_ -> return $ Just (getString token)
     _ -> return Nothing
-
-initOwnerContactIdDB :: DB.Connection -> IO ()
-initOwnerContactIdDB conn = do
-    -- TODO: better table structure
-    -- maybe its possible to assume that puppeter always has id=1, but i dont shure how sqlite works
-    DB.execute_ conn "CREATE TABLE IF NOT EXISTS ownerChatId (puppetSimpexId INTEGER, chatId INTEGER)"
-    return ()
-
-saveOwnerContactId :: DB.Connection -> Puppet -> Int64 -> IO()
-saveOwnerContactId conn puppet chatId = do
-    -- TODO: don't insert duplicates
-    DB.executeNamed conn "INSERT INTO ownerChatId (puppetSimpexId, chatId) VALUES (:sid, :cid)" [":sid" DB.:= simplexUserId puppet, ":cid" DB.:= chatId]
-
-getOwnerContactId :: DB.Connection -> Puppet -> IO (Maybe Int64)
-getOwnerContactId conn puppet = do
-  ids <- DB.query conn "SELECT chatId from ownerChatId WHERE puppetSimpexId=?" (DB.Only $ simplexUserId puppet) :: IO [RInt64]
-  case ids of
-    id':_ -> return $ Just $ getInt id'
-    _ -> return Nothing
-
 
 {--
 initGroupChatDB :: DB.Connection -> IO ()

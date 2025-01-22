@@ -64,7 +64,7 @@ main = do
   DB.Puppet.initPuppetDB botDB
   initOwnerLinkDB botDB
   initTelegramTokenDB botDB
-  initOwnerContactIdDB botDB
+  DB.Puppet.initPuppetOwnerContactIdDB botDB
   DB.Puppet.initPuppetTgChatDB botDB
   --initGroupChatDB botDB
   --initGroupLinksDB botDB

@@ -66,7 +66,7 @@ runBrige bridgeConfig@BridgeConfig{chatController = cc, telegramActionHandler = 
                         when (maybe "" show (SimplexTypes.contactLink p) == show cruri) (do
                             p <- getPuppetBySimplexUser bridgedb cc botacc
                             liftIO $ putStrLn $ "owner contact : " ++ show (SimplexTypes.contactId' contact)
-                            liftIO $ saveOwnerContactId bridgedb p (SimplexTypes.contactId' contact)
+                            liftIO $ DB.Puppet.insertPuppetOwnerContactId bridgedb p (SimplexTypes.contactId' contact)
                             )
                     _ -> return ()
             CRNewChatItems {user = _user'@SimplexTypes.User{SimplexTypes.userId = _userId'}, chatItems = (AChatItem _ SMDRcv (DirectChat contact@SimplexTypes.Contact{contactId = cid}) ChatItem {content = mc@CIRcvMsgContent {}}) : _}
@@ -79,7 +79,7 @@ runBrige bridgeConfig@BridgeConfig{chatController = cc, telegramActionHandler = 
                                 do
                                     isFirstUser <- liftIO $ tryPutMVar invatationLinkMVar uri --TODO: it's not certain that if MVar is empty, tryPutMVar returns True
                                     if isFirstUser
-                                        then (liftIO $ saveOwnerContactId bridgedb mainBotFakePuppet (SimplexTypes.contactId' contact)) >> (liftIO $ saveOwnerInvatationLink bridgedb uri) >> SimplexBotApi.sendMessage cc contact "You are the owner now"
+                                        then (liftIO $ DB.Puppet.insertPuppetOwnerContactId bridgedb mainBotFakePuppet (SimplexTypes.contactId' contact)) >> (liftIO $ saveOwnerInvatationLink bridgedb uri) >> SimplexBotApi.sendMessage cc contact "You are the owner now"
                                         else SimplexBotApi.sendMessage cc contact "Someone overtook you or you are already the owner" 
                             )
                 | otherwise ->
@@ -105,7 +105,7 @@ runBrige bridgeConfig@BridgeConfig{chatController = cc, telegramActionHandler = 
             puppet <- getOrCreatePuppetByTgUser bridgedb cc usr invatationLink
             liftIO $ DB.Puppet.savePuppetTgChat bridgedb puppet (TelegramAPI.chatId chat)
             SimplexBotApi.setCCActiveUser cc (simplexUserId puppet)
-            mchatId' <- liftIO $ getOwnerContactId bridgedb puppet
+            mchatId' <- liftIO $ DB.Puppet.getPuppetOwnerContactId bridgedb puppet
             liftIO $ putStrLn $ "Owner contact id: " ++ show mchatId'
             case mchatId' of
                 Just chatId' -> SimplexBotApi.sendComposedMessage'' cc (ChatRef CTDirect chatId') Nothing (SimplexBotApi.textMsgContent' msg)
@@ -114,7 +114,7 @@ runBrige bridgeConfig@BridgeConfig{chatController = cc, telegramActionHandler = 
         processTelegramGroupMessage cc bridgedb invatationLink usr chat msg botId= do
             puppet <- getOrCreatePuppetByTgUser bridgedb cc usr invatationLink
             --SimplexBotApi.setCCActiveUser cc (simplexUserId puppet)
-            mownerContactId <- getOwnerContactId bridgedb mainBotFakePuppet
+            mownerContactId <- getPuppetOwnerContactId bridgedb mainBotFakePuppet
             case mownerContactId of 
                 Just ownerContactId -> do
                     mschat <- getOrCreatePuppetSimplexGroupByTgChat ownerContactId botId puppet bridgedb cc chat
@@ -125,7 +125,7 @@ runBrige bridgeConfig@BridgeConfig{chatController = cc, telegramActionHandler = 
                 --}
             {--
             puppet <- getOrCreatePuppetByTgUser bridgedb cc usr invatationLink
-            mownerContactId <- getOwnerContactId bridgedb puppet
+            mownerContactId <- getPuppetOwnerContactId bridgedb puppet
             case mownerContactId of 
                 Just ownerContactId -> do
                     schat <- getOrCreatePuppetSimplexGroupByTgChat ownerContactId botId bridgedb cc chat
