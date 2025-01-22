@@ -8,7 +8,7 @@ module DB.Puppet
     getPuppetByTgId,
     getPuppetBySimplexId,
     initPuppetTgChatDB,
-    savePuppetTgChat,
+    insertPuppetTgChat,
     getPuppetTgChat,
     initPuppetOwnerContactIdDB,
     insertPuppetOwnerContactId,
@@ -77,8 +77,8 @@ initPuppetTgChatDB conn = do
     execute_ conn "CREATE TABLE IF NOT EXISTS puppetTgChat (telegramUserID INTEGER, telegramChatID INTEGER)"
     return ()
 
-savePuppetTgChat :: Connection -> Puppet -> Telegram.Bot.API.Types.Common.ChatId -> IO()
-savePuppetTgChat conn puppet (Telegram.Bot.API.Types.Common.ChatId tgchatid) = do
+insertPuppetTgChat :: Connection -> Puppet -> Telegram.Bot.API.Types.Common.ChatId -> IO()
+insertPuppetTgChat conn puppet (Telegram.Bot.API.Types.Common.ChatId tgchatid) = do
     -- TODO: don't insert duplicates
     executeNamed conn "INSERT INTO puppetTgChat (telegramUserID, telegramChatID) VALUES (:tguid, :tgchatid)" [":tguid" := tgid, ":tgchatid" := tgchatid]
     where

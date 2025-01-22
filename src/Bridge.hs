@@ -104,7 +104,7 @@ runBrige bridgeConfig@BridgeConfig{chatController = cc, telegramActionHandler = 
                     Nothing -> liftIO $ putStrLn "Missed invatation link. Cant process process telegram message"
         processTelegramPrivateMessage cc bridgedb invatationLink usr chat msg = do
             puppet <- getOrCreatePuppetByTgUser bridgedb cc usr invatationLink
-            liftIO $ DB.Puppet.savePuppetTgChat bridgedb puppet (TelegramAPI.chatId chat)
+            liftIO $ DB.Puppet.insertPuppetTgChat bridgedb puppet (TelegramAPI.chatId chat)
             SimplexBotApi.setCCActiveUser cc (simplexUserId puppet)
             mchatId' <- liftIO $ DB.Puppet.getPuppetOwnerContactId bridgedb puppet
             liftIO $ putStrLn $ "Owner contact id: " ++ show mchatId'
