@@ -15,6 +15,8 @@ executable bridge
       Bridge
       DB.DBTypes
       DB.Puppet
+      DB.SimplexData
+      DB.TelegramData
       Puppet
       Shared
       SimplexBot

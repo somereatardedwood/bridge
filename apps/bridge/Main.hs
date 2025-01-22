@@ -12,13 +12,16 @@ module Main where
 import Bridge
 import Numeric.Natural(Natural)
 import Puppet
+
+import qualified Database.SQLite.Simple as DB(open, Connection)
 import qualified DB.Puppet
+import qualified DB.SimplexData
+
 import SimplexBot
 import TelegramBot
 import Simplex.Chat.Options
 import System.Directory (getAppUserDataDirectory, createDirectoryIfMissing, getHomeDirectory)
 import System.FilePath ((</>))
-import qualified Database.SQLite.Simple as DB(open, Connection)
 import Simplex.Chat.Controller ( versionNumber )
 import Control.Concurrent.MVar
 import Simplex.Chat.Terminal (terminalChatConfig)
@@ -62,7 +65,7 @@ main = do
   let botDbFile = fmap (flip (</>) "botDB.db") appDir
   botDB <- botDbFile >>= DB.open
   DB.Puppet.initPuppetDB botDB
-  initOwnerLinkDB botDB
+  DB.SimplexData.initOwnerInvatationLinkDB botDB
   initTelegramTokenDB botDB
   DB.Puppet.initPuppetOwnerContactIdDB botDB
   DB.Puppet.initPuppetTgChatDB botDB
@@ -75,7 +78,7 @@ main = do
   ownerLinkMVar <- newEmptyMVar
   eventQueue <- atomically $ newTBQueue queueSize
 
-  link <- getOwnerInvatationLink botDB
+  link <- DB.SimplexData.getOwnerInvatationLink botDB
 
   maybe (return ()) (putMVar ownerLinkMVar) link
 

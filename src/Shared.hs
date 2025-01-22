@@ -11,9 +11,6 @@ module Shared
     saveTelegramToken,
     getTelegramToken,
     getOrCreatePuppetByTgUser,
-    initOwnerLinkDB,
-    saveOwnerInvatationLink,
-    getOwnerInvatationLink,
     getPuppetBySimplexUser,
     --initGroupChatDB,
     --getOrCreatePuppetSimplexGroupByTgChat,
@@ -96,28 +93,6 @@ getPuppetOwnerChat puppet cc = do
     [] -> return Nothing
     c:_ -> return $ Just c
 --}
-
-initOwnerLinkDB :: DB.Connection -> IO ()
-initOwnerLinkDB conn = do
-    -- TODO: better table structure
-    -- maybe its possible to assume that puppeter always has id=1, but i dont shure how sqlite works
-    DB.execute_ conn "CREATE TABLE IF NOT EXISTS ownerInvatationLink (link TEXT)"
-    return ()
-
-saveOwnerInvatationLink :: DB.Connection -> SMP.AConnectionRequestUri -> IO()
-saveOwnerInvatationLink conn link = do
-    let linkStr = strEncode link
-    -- TODO: don't insert duplicates
-    DB.execute conn "INSERT INTO ownerInvatationLink (link) VALUES (?)" (DB.Only $ Text.unpack $ Text.decodeUtf8 linkStr)
-
-getOwnerInvatationLink :: DB.Connection -> IO (Maybe SMP.AConnectionRequestUri)
-getOwnerInvatationLink conn = do
-  links <- DB.query_ conn "SELECT * from ownerInvatationLink":: IO [RString]
-  case links of
-    link':_ -> case strDecode  $ Text.encodeUtf8 $ Text.pack (getString link') of
-      Left error -> return Nothing
-      Right link -> return $ Just link
-    _ -> return Nothing
 
 initTelegramTokenDB :: DB.Connection -> IO ()
 initTelegramTokenDB conn = do

@@ -23,6 +23,7 @@ import Shared
 import Control.Concurrent.MVar
 import Puppet
 import qualified DB.Puppet
+import qualified DB.SimplexData
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text
 import qualified Simplex.Chat.Types as SimplexTypes(User(..), Contact(..), localProfileId, LocalProfile(..), contactId', GroupInfo(..))
@@ -79,7 +80,7 @@ runBrige bridgeConfig@BridgeConfig{chatController = cc, telegramActionHandler = 
                                 do
                                     isFirstUser <- liftIO $ tryPutMVar invatationLinkMVar uri --TODO: it's not certain that if MVar is empty, tryPutMVar returns True
                                     if isFirstUser
-                                        then (liftIO $ DB.Puppet.insertPuppetOwnerContactId bridgedb mainBotFakePuppet (SimplexTypes.contactId' contact)) >> (liftIO $ saveOwnerInvatationLink bridgedb uri) >> SimplexBotApi.sendMessage cc contact "You are the owner now"
+                                        then (liftIO $ DB.Puppet.insertPuppetOwnerContactId bridgedb mainBotFakePuppet (SimplexTypes.contactId' contact)) >> (liftIO $ DB.SimplexData.insertOwnerInvatationLink bridgedb uri) >> SimplexBotApi.sendMessage cc contact "You are the owner now"
                                         else SimplexBotApi.sendMessage cc contact "Someone overtook you or you are already the owner" 
                             )
                 | otherwise ->
