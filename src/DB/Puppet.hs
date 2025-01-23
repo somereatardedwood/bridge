@@ -24,7 +24,6 @@ import Simplex.Chat.Controller ( ChatController )
 import qualified Telegram.Bot.API as TelegramAPI
 import Telegram.Bot.API.Types.Common(ChatId(..))
 import qualified Simplex.Messaging.Agent.Protocol as SMP(UserId)
---import Telegram.Bot.API.Types.Common(ChatId(..))
 import Database.SQLite.Simple ( FromRow(..), NamedParam(..), Connection, Only(..), open, field, query, query_, executeNamed, execute_)
 import Database.SQLite.Simple.FromRow (RowParser)
 import Data.Int (Int64)

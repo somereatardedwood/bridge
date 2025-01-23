@@ -34,28 +34,28 @@ data BridgeConfig = BridgeConfig{
     chatController :: ChatController,
     telegramActionHandler :: TelegramAction -> IO (),
     bridgeDB :: DB.Connection,
-    botId :: MVar SMP.UserId, --main bot id 
+    mainBotId :: MVar SMP.UserId,
     ownerInvatationLink :: MVar SMP.AConnectionRequestUri
 }
 
 mainBotFakePuppet = Puppet {tgUserId = TelegramAPI.UserId (-1), simplexUserId = -1}
 
 runBrige :: BridgeConfig -> IO ()
-runBrige bridgeConfig@BridgeConfig{chatController = cc, telegramActionHandler = tgActionHandler, bridgeDB = bridgedb, botId = botIdMVar, ownerInvatationLink = invatationLinkMVar} = forever $ do
-    _userId <- readMVar botIdMVar
+runBrige bridgeConfig@BridgeConfig{chatController = cc, telegramActionHandler = tgActionHandler, bridgeDB = bridgedb, mainBotId = mainBotIdMVar, ownerInvatationLink = invatationLinkMVar} = forever $ do
+    mainBotId' <- readMVar mainBotIdMVar
     event <- atomically $ readTBQueue (eventQueue bridgeConfig)
     r <- runExceptT (
         case event of
-            Left simplexEvent -> processSimplexEvent simplexEvent _userId
-            Right telegramEvent -> processTelegramEvent telegramEvent _userId
+            Left simplexEvent -> processSimplexEvent simplexEvent mainBotId'
+            Right telegramEvent -> processTelegramEvent telegramEvent mainBotId'
         )
     logEventProcessingError r
     where 
-        processSimplexEvent event _userId = case event of
-            CRContactConnected botacc@SimplexTypes.User{SimplexTypes.userId = _userId'} contact@SimplexTypes.Contact{profile = p} _ -> do
+        processSimplexEvent event mainBotId = case event of
+            CRContactConnected botacc@SimplexTypes.User{SimplexTypes.userId = puppetUserId} contact@SimplexTypes.Contact{profile = p} _ -> do
                 _ownerInvatationLink <- liftIO $ tryReadMVar invatationLinkMVar
                 
-                when (_userId' == _userId) $ SimplexBotApi.setCCActiveUser cc _userId >>  SimplexBotApi.sendMessage cc contact welcomeMessage
+                when (puppetUserId == mainBotId) $ SimplexBotApi.setCCActiveUser cc mainBotId >>  SimplexBotApi.sendMessage cc contact welcomeMessage
                 case _ownerInvatationLink of
                     Just (SMP.ACR _ cruri) -> do
                         --print (SimplexTypes.contactLink p)
@@ -66,9 +66,9 @@ runBrige bridgeConfig@BridgeConfig{chatController = cc, telegramActionHandler = 
                             liftIO $ DB.Puppet.insertPuppetOwnerContactId bridgedb p (SimplexTypes.contactId' contact)
                             )
                     _ -> return ()
-            CRNewChatItems {user = _user'@SimplexTypes.User{SimplexTypes.userId = _userId'}, chatItems = (AChatItem _ SMDRcv (DirectChat contact@SimplexTypes.Contact{contactId = cid}) ChatItem {content = mc@CIRcvMsgContent {}}) : _}
-                | _userId' == _userId -> do
-                    SimplexBotApi.setCCActiveUser cc _userId
+            CRNewChatItems {user = _user'@SimplexTypes.User{SimplexTypes.userId = puppetUserId}, chatItems = (AChatItem _ SMDRcv (DirectChat contact@SimplexTypes.Contact{contactId = cid}) ChatItem {content = mc@CIRcvMsgContent {}}) : _}
+                | puppetUserId == mainBotId -> do
+                    SimplexBotApi.setCCActiveUser cc mainBotId
                     case strDecode (Text.encodeUtf8 $ ciContentToText mc) of
                         Left error -> SimplexBotApi.sendMessage cc contact "This is not valid invatation link"
                         Right uri ->
@@ -86,7 +86,7 @@ runBrige bridgeConfig@BridgeConfig{chatController = cc, telegramActionHandler = 
                             mtgChatId <- liftIO $ DB.Puppet.getPuppetTgChat bridgedb puppet
                             liftIO $ maybe (putStrLn "Missing tg chat for puppet") (\tgChatId -> tgActionHandler $ Right $ MsgToChat tgChatId (ciContentToText mc)) mtgChatId
                     )
-            ev -> liftIO $ putStrLn $ "NEW EVENT\n" ++ show ev
+            ev -> return ()
         processTelegramEvent event botId = case event of 
             MsgFromUser usr chat msg -> do
                 invatationLink' <- liftIO $ tryReadMVar invatationLinkMVar

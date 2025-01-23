@@ -75,7 +75,7 @@ main = do
 
   opts <- welcomeGetOpts
   token <- askTelegramToken botDB
-  botIdMVar <- newEmptyMVar
+  mainBotIdMVar <- newEmptyMVar
   ownerLinkMVar <- newEmptyMVar
   eventQueue <- atomically $ newTBQueue queueSize
 
@@ -83,7 +83,7 @@ main = do
 
   maybe (return ()) (putMVar ownerLinkMVar) link
 
-  cc <- initializeSimplexChatCore terminalChatConfig opts botDB (mySimplexBot botIdMVar botDB eventQueue)
+  cc <- initializeSimplexChatCore terminalChatConfig opts botDB (mySimplexBot mainBotIdMVar botDB eventQueue)
   putStrLn "Contact to bot to become owner\nThe first person to join the bot will be considered its owner"
 
 
@@ -103,7 +103,7 @@ main = do
     chatController = cc,
     telegramActionHandler = tgActionHandler,
     bridgeDB = botDB,
-    botId = botIdMVar,
+    mainBotId = mainBotIdMVar,
     ownerInvatationLink = ownerLinkMVar
   }
 
