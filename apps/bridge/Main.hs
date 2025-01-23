@@ -38,9 +38,11 @@ bridgeVersion = "0.1.0"
 queueSize :: Natural
 queueSize = 10000
 
+bridgeDataDirectory = getAppUserDataDirectory "tg-simplex-bridge"
+
 welcomeGetOpts :: IO ChatOpts
 welcomeGetOpts = do
-  appDir <- getAppUserDataDirectory "simplex"
+  appDir <- bridgeDataDirectory
   opts@ChatOpts {coreOptions = CoreChatOpts {dbFilePrefix}} <- getChatOpts appDir "simplex_bot"
   putStrLn $ "SimpleX Chat Bot v" ++ versionNumber
   putStrLn $ "db: " <> dbFilePrefix <> "_chat.db, " <> dbFilePrefix <> "_agent.db"
@@ -61,8 +63,8 @@ main :: IO ()
 main = do
   putStrLn $ "Starting bridge v." ++ bridgeVersion ++ " ..."
 
-  let appDir = fmap (flip (</>) "bridgeData") $ getAppUserDataDirectory "simplex"
-  appDir >>= createDirectoryIfMissing False
+  let appDir = fmap (flip (</>) "bridgeData") $ bridgeDataDirectory
+  appDir >>= createDirectoryIfMissing True
   let botDbFile = fmap (flip (</>) "botDB.db") appDir
   botDB <- botDbFile >>= DB.open
   DB.Puppet.initPuppetDB botDB
