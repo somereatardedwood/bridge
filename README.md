@@ -2,18 +2,6 @@
 
 ## Building
 
-### Install dependencies
-
-In order to successfully configure bridge, following packages are needed:
-
-> curl
-
-Arch GNU+Linux:
-
-```console
-$ sudo pacman -S curl
-```
-
 ### Prepare environment
 
 #### Install GHCup
