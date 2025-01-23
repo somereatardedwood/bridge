@@ -39,7 +39,7 @@ getOrCreatePuppetByTgUser conn cc tguser invatationLink = do
     Just p -> do
       return p
     Nothing -> do
-      let displayName = (TgUser.userFirstName tguser) <> (fromMaybe (Text.pack "") (TgUser.userLastName tguser))
+      let displayName = Text.concat [(TgUser.userFirstName tguser), Text.pack " ", (fromMaybe "" (TgUser.userLastName tguser))]
       correspondingSimplexUser@Simplex.Chat.Types.User{userId = simplexUserId'} <- SimplexBotApi.createActiveUser cc (Profile {displayName, fullName = "", image = Nothing, contactLink = Nothing, preferences = Nothing}) 
       let puppet = Puppet {tgUserId = tgUserId', simplexUserId = simplexUserId'}
       liftIO $ DB.Puppet.insertPuppet conn False puppet
