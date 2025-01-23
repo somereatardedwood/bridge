@@ -19,7 +19,7 @@ Answer to script questions as follows (in case you don't understand what do ques
 Source environment in order to use GHCup:
 
 ```console
-$ . /home/mrgreen/.ghcup/env
+$ . ~/.ghcup/env
 ```
 
 Run TUI configuration tool:
@@ -43,12 +43,6 @@ Clone:
 
 ```console
 $ git clone https://github.com/EKCKABATOP54/bridge.git
-```
-
-Create necessary directory:
-
-```console
-$ mkdir -p $HOME/.simplex/bridgeData
 ```
 
 Build:
@@ -123,7 +117,7 @@ Keep in mind, that right now you should use **only default servers** at all time
 Delete bridge database:
 
 ```console
-$ rm -rf $HOME/.simplex/
+$ rm -rf $HOME/.tg-simplex-bridge/
 ```
 
 and start again from <a href="#bridge-setup"><b>bridge setup section</b></a>.
