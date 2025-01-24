@@ -105,8 +105,6 @@ To use the bridge, send telegram link to person you wish to connect with. After 
 
 After that, you should connect to each other without any problems.
 
-Keep in mind, that right now you should use **only default servers** at all times. If not, your receiving address with a puppet may be set to custom (which bridge does not have) and lead to unfinished connection.
-
 ## What currently works
 
 * Bridging multiple telegram chats (person <-> bridge_bot) to your SimpleX profile

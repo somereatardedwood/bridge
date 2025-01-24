@@ -12,12 +12,17 @@ module Main where
 import Bridge
 import Numeric.Natural(Natural)
 import Puppet
+
+import qualified Database.SQLite.Simple as DB(open, Connection)
+import qualified DB.Puppet
+import qualified DB.SimplexData
+import qualified DB.TelegramData
+
 import SimplexBot
 import TelegramBot
 import Simplex.Chat.Options
 import System.Directory (getAppUserDataDirectory, createDirectoryIfMissing, getHomeDirectory)
 import System.FilePath ((</>))
-import qualified Database.SQLite.Simple as DB(open, Connection)
 import Simplex.Chat.Controller ( versionNumber )
 import Control.Concurrent.MVar
 import Simplex.Chat.Terminal (terminalChatConfig)
@@ -33,9 +38,11 @@ bridgeVersion = "0.1.0"
 queueSize :: Natural
 queueSize = 10000
 
+bridgeDataDirectory = getAppUserDataDirectory "tg-simplex-bridge"
+
 welcomeGetOpts :: IO ChatOpts
 welcomeGetOpts = do
-  appDir <- getAppUserDataDirectory "simplex"
+  appDir <- bridgeDataDirectory
   opts@ChatOpts {coreOptions = CoreChatOpts {dbFilePrefix}} <- getChatOpts appDir "simplex_bot"
   putStrLn $ "SimpleX Chat Bot v" ++ versionNumber
   putStrLn $ "db: " <> dbFilePrefix <> "_chat.db, " <> dbFilePrefix <> "_agent.db"
@@ -43,42 +50,42 @@ welcomeGetOpts = do
 
 askTelegramToken :: DB.Connection -> IO (Token)
 askTelegramToken db = do
-  mToken <- getTelegramToken db
+  mToken <- DB.TelegramData.getTelegramToken db
   case mToken of
     Just t -> return $ Token $ Text.pack t
     Nothing -> do
       putStrLn "Enter telegram bot token"
       token <- getLine
-      saveTelegramToken db token
+      DB.TelegramData.insertTelegramToken db token
       return $ Token $ Text.pack token
 
 main :: IO ()
 main = do
   putStrLn $ "Starting bridge v." ++ bridgeVersion ++ " ..."
 
-  let appDir = fmap (flip (</>) "bridgeData") $ getAppUserDataDirectory "simplex"
-  appDir >>= createDirectoryIfMissing False
+  let appDir = fmap (flip (</>) "bridgeData") $ bridgeDataDirectory
+  appDir >>= createDirectoryIfMissing True
   let botDbFile = fmap (flip (</>) "botDB.db") appDir
   botDB <- botDbFile >>= DB.open
-  initPuppetDB botDB
-  initOwnerLinkDB botDB
-  initTelegramTokenDB botDB
-  initOwnerContactIdDB botDB
-  initPuppetTgChatDB botDB
-  initGroupChatDB botDB
-  initGroupLinksDB botDB
+  DB.Puppet.initPuppetDB botDB
+  DB.SimplexData.initOwnerInvatationLinkDB botDB
+  DB.TelegramData.initTelegramTokenDB botDB
+  DB.Puppet.initPuppetOwnerContactIdDB botDB
+  DB.Puppet.initPuppetTgChatDB botDB
+  --initGroupChatDB botDB
+  --initGroupLinksDB botDB
 
   opts <- welcomeGetOpts
   token <- askTelegramToken botDB
-  botIdMVar <- newEmptyMVar
+  mainBotIdMVar <- newEmptyMVar
   ownerLinkMVar <- newEmptyMVar
   eventQueue <- atomically $ newTBQueue queueSize
 
-  link <- getOwnerInvatationLink botDB
+  link <- DB.SimplexData.getOwnerInvatationLink botDB
 
   maybe (return ()) (putMVar ownerLinkMVar) link
 
-  cc <- initializeSimplexChatCore terminalChatConfig opts botDB (mySimplexBot botIdMVar botDB eventQueue)
+  cc <- initializeSimplexChatCore terminalChatConfig opts botDB (mySimplexBot mainBotIdMVar botDB eventQueue)
   putStrLn "Contact to bot to become owner\nThe first person to join the bot will be considered its owner"
 
 
@@ -98,7 +105,7 @@ main = do
     chatController = cc,
     telegramActionHandler = tgActionHandler,
     bridgeDB = botDB,
-    botId = botIdMVar,
+    mainBotId = mainBotIdMVar,
     ownerInvatationLink = ownerLinkMVar
   }
 

@@ -11,8 +11,12 @@ build-type:     Simple
 executable tg-simplex-bridge
   main-is: Main.hs
   other-modules:
+      BM
       Bridge
-      DBTypes
+      DB.DBTypes
+      DB.Puppet
+      DB.SimplexData
+      DB.TelegramData
       Puppet
       Shared
       SimplexBot
